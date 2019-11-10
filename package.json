@@ -1,0 +1,26 @@
+{
+  "name": "node-beaglebone-usbboot",
+  "version": "1.0.0",
+  "description": "Transforms BeagleBone to mass storage device",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parthi-g/node-beaglebone-usbboot.git"
+  },
+  "keywords": [
+    "beaglebone",
+    "bootp",
+    "rndis",
+    "usbboot",
+    "usb"
+  ],
+  "author": "Parthiban Gandhi",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/parthi-g/node-beaglebone-usbboot/issues"
+  },
+  "homepage": "https://github.com/parthi-g/node-beaglebone-usbboot#readme"
+}
