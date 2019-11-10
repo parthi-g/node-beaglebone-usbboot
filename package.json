@@ -2,7 +2,8 @@
   "name": "node-beaglebone-usbboot",
   "version": "1.0.0",
   "description": "Transforms BeagleBone to mass storage device",
-  "main": "index.js",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
   "scripts": {
     "prettier": "prettier --config ./node_modules/resin-lint/config/.prettierrc --write \"lib/**/*.ts\"",
     "lint": "resin-lint --typescript lib/*.ts",
