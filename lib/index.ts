@@ -2,20 +2,21 @@
 
 import * as usb from '@balena.io/usb';
 // import { delay, fromCallback, promisify } from 'bluebird';
+// import { promisify } from 'bluebird';
 import * as _debug from 'debug';
 import { EventEmitter } from 'events';
 // import { readFile as readFile_ } from 'fs';
 // import * as Path from 'path';
 
 // const readFile = promisify(readFile_);
-
+import * as _utils from 'util';
 const debug = _debug('node-beaglebone-usbboot');
 
 const POLLING_INTERVAL_MS = 2000;
 // Delay in ms after which we consider that the device was unplugged (not resetted)
 const DEVICE_UNPLUG_TIMEOUT = 5000;
 
-const USB_ENDPOINT_INTERFACES_SOC_BCM2835 = 1;
+// const USB_ENDPOINT_INTERFACES_SOC_BCM2835 = 0;
 const USB_VENDOR_ID_TEXAS_INSTRUMENTS = 0x0451;
 const USB_PRODUCT_ID_ROM = 0x6141;
 const USB_PRODUCT_ID_SPL = 0xd022;
@@ -53,21 +54,27 @@ const initializeDevice = (
 	device: usb.Device,
 ): { iface: usb.Interface; endpoint: usb.OutEndpoint } => {
 	// interface is a reserved keyword in TypeScript so we use iface
+
+	debug('device', device);
+	console.log(_utils.inspect(device));
+	debug('bInterface', device.configDescriptor.bNumInterfaces);
 	device.open();
 	// Handle 2837 where it can start with two interfaces, the first is mass storage
 	// the second is the vendor interface for programming
-	let interfaceNumber;
-	let endpointNumber;
+
+	const interfaceNumber = 1;
+	const endpointNumber = 2;
+	/*
 	if (
 		device.configDescriptor.bNumInterfaces ===
 		USB_ENDPOINT_INTERFACES_SOC_BCM2835
 	) {
-		interfaceNumber = 0;
-		endpointNumber = 1;
+		interfaceNumber = 2;
+		endpointNumber = 2;
 	} else {
-		interfaceNumber = 1;
-		endpointNumber = 3;
-	}
+		interfaceNumber = 2;
+		endpointNumber = 2;
+	} */
 	const iface = device.interface(interfaceNumber);
 	iface.claim();
 	const endpoint = iface.endpoint(endpointNumber);
@@ -212,7 +219,7 @@ export class UsbbootScanner extends EventEmitter {
 		try {
 			const { endpoint } = initializeDevice(device);
 			if (device.deviceDescriptor.iSerialNumber === 0) {
-				debug('Sending bootcode.bin', devicePortId(device));
+				debug('Sending u-boot-spl.bin', devicePortId(device));
 				this.step(device, 0);
 				await secondStageBoot(device, endpoint);
 				// The device will now detach and reattach with iSerialNumber 1.
