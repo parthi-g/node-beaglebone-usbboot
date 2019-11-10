@@ -4,8 +4,19 @@
   "description": "Transforms BeagleBone to mass storage device",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prettier": "prettier --config ./node_modules/resin-lint/config/.prettierrc --write \"lib/**/*.ts\"",
+    "lint": "resin-lint --typescript lib/*.ts",
+    "build": "npm run lint && rimraf build && tsc",
+    "prepublish": "npm run build"
   },
+  "files": [
+    "build/index.js",
+    "build/index.d.ts",
+    "build/index.js.map",
+    "blobs",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/parthi-g/node-beaglebone-usbboot.git"
