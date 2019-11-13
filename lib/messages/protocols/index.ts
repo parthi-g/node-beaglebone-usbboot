@@ -1,6 +1,9 @@
+import { ARP } from './arp'
+import { BOOTP } from './bootp'
 import { Eth } from './eth'
 import { IP } from './ip'
 import { UDP } from './udp'
+import { RNDIS } from './rndis';
 export class Parse {
     // ether header
     parseEthHdr(buff: any) {
@@ -21,7 +24,34 @@ export class Parse {
     parseUdp(buff: any) {
         return new UDP().parseUdp(buff)
     }
+    parseBOOTP(buff: any) {
+        return new BOOTP().parseBOOTP(buff)
+    }
+    parseARP(buff: any) {
+        return new ARP().parseARP(buff);
+    }
 
+}
+export class Maker {
+    // Make RNDIS
+    makeRNDIS(dataLength: number): Buffer {
+        return new RNDIS().makeRNDIS(dataLength);
+    }
+    makeEther2(dest: any, source: any, proto: any): Buffer {
+        return new Eth().makeEther2(dest, source, proto)
+    }
+    makeIPV4(srcAddr: any, dstAddr: any, proto: any, id_: any, totalLen: any, chksum: any): Buffer {
+        return new IP().makeIPV4(srcAddr, dstAddr, proto, id_, totalLen, chksum);
+    }
+    makeUDP(udpDataLen: any, srcPort: any, dstPort: any): Buffer {
+        return new UDP().makeUDP(udpDataLen, srcPort, dstPort);
+    }
+    makeBOOTP(serverName: any, fileName: any, xid_: any, hwDest: any, bbIP: any, serverIP: any): Buffer {
+        return new BOOTP().makeBOOTP(serverName, fileName, xid_, hwDest, bbIP, serverIP);
+    }
+    makeARP(opCode:any, hwSource:any, ipSource:any, hwDest:any, ipDest:any) {
+        return new ARP().makeARP(opCode,hwSource,ipSource,hwDest,ipDest);
+    }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// Headers for parsing (Binary-Praser) /////////////////////////////////////////

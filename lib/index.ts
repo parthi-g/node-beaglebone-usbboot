@@ -10,7 +10,6 @@ import * as _os from 'os';
 // import * as Path from 'path';
 
 // const readFile = promisify(readFile_);
-import * as _utils from 'util';
 import { Message } from './messages'
 import { RNDIS } from './rndis';
 const platform = _os.platform();
@@ -63,8 +62,6 @@ const initializeDevice = (
 } => {
 	// interface is a reserved keyword in TypeScript so we use iface
 
-	debug('device', device);
-	console.log(_utils.inspect(device));
 	debug('bInterface', device.configDescriptor.bNumInterfaces);
 	device.open();
 	// Handle 2837 where it can start with two interfaces, the first is mass storage
@@ -233,13 +230,15 @@ export class UsbbootScanner extends EventEmitter {
 				const rndis = new RNDIS();
 				rndis.initialize(device);
 			}
-			let foundDevice = '';
+			let serverConfig: any = {};
+			serverConfig.foundDevice = '';
+			serverConfig.bootFile = 'u-boot-spl.bin'
 			inEndpoint.startPoll(1, 500); // MAXBUFF
 			inEndpoint.on('data', (data: any) => {
 				console.log('I am reciving some data');
 				console.log(JSON.stringify(data));
 				const message = new Message()
-				const request = message.identify(foundDevice, data);
+				const request = message.identify(serverConfig.foundDevice, data);
 				switch (request) {
 					case 'unidentified':
 						console.log(request);
@@ -249,9 +248,15 @@ export class UsbbootScanner extends EventEmitter {
 						break;
 					case 'BOOTP':
 						console.log(request);
+						const { bootPBuff, bootPServerConfig } = message.getBOOTPResponse(data, serverConfig);
+						serverConfig = bootPServerConfig;
+						this.emit('outTransfer', outEndpoint, request, bootPBuff, 1)
 						break;
 					case 'ARP':
 						console.log(request);
+						const { arpBuff, arpServerConfig } = message.getARResponse(data, serverConfig)
+						serverConfig = arpServerConfig;
+						this.emit('outTransfer', outEndpoint, request, arpBuff, 2)
 						break;
 					case 'TFTP_Data':
 						console.log(request);
@@ -278,9 +283,23 @@ export class UsbbootScanner extends EventEmitter {
 			}
 			device.close();
 		} catch (error) {
+			console.log(error);
 			debug('error', error, devicePortId(device));
 			this.remove(device);
 		}
+		// Event for outEnd Transfer
+		this.on('outTransfer', (outEndpoint: usb.OutEndpoint, request: any, response: any, step: number) => {
+			console.log('Step:' + step);
+			console.log('Request:' + request);
+			console.log('Response:' + response);
+			outEndpoint.transfer(response, (error: any) => {
+				if (!error) {
+					if (request == 'BOOTP') {
+						console.log(`BOOTP reply done: atep ${step}`);
+					}
+				}
+			});
+		});
 	}
 
 	private detachDevice(device: usb.Device): void {
