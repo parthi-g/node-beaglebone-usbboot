@@ -1,15 +1,19 @@
 // tslint:disable:no-bitwise
-
 import * as usb from '@balena.io/usb';
 // import { delay, fromCallback, promisify } from 'bluebird';
 // import { promisify } from 'bluebird';
+
 import * as _debug from 'debug';
 import { EventEmitter } from 'events';
+import * as _os from 'os';
 // import { readFile as readFile_ } from 'fs';
 // import * as Path from 'path';
 
 // const readFile = promisify(readFile_);
 import * as _utils from 'util';
+import { Message } from './messages'
+import { RNDIS } from './rndis';
+const platform = _os.platform();
 const debug = _debug('node-beaglebone-usbboot');
 
 const POLLING_INTERVAL_MS = 2000;
@@ -52,7 +56,11 @@ const isBeagleBoneInMassStorageMode = (device: usb.Device): boolean => {
 };
 const initializeDevice = (
 	device: usb.Device,
-): { iface: usb.Interface; endpoint: usb.OutEndpoint } => {
+): {
+	iface: usb.Interface;
+	inEndpoint: usb.InEndpoint;
+	outEndpoint: usb.OutEndpoint;
+} => {
 	// interface is a reserved keyword in TypeScript so we use iface
 
 	debug('device', device);
@@ -63,7 +71,7 @@ const initializeDevice = (
 	// the second is the vendor interface for programming
 
 	const interfaceNumber = 1;
-	const endpointNumber = 2;
+	// const endpointNumber = 2;
 	/*
 	if (
 		device.configDescriptor.bNumInterfaces ===
@@ -77,19 +85,18 @@ const initializeDevice = (
 	} */
 	const iface = device.interface(interfaceNumber);
 	iface.claim();
-	const endpoint = iface.endpoint(endpointNumber);
-	if (!(endpoint instanceof usb.OutEndpoint)) {
+	// const endpoint = iface.endpoint(endpointNumber);
+	const inEndpoint = iface.endpoints[0];
+	const outEndpoint = iface.endpoints[1];
+	if (!(inEndpoint instanceof usb.InEndpoint)) {
+		console.log('endpoint is not an usb.OutEndpoint');
+		throw new Error('endpoint is not an usb.OutEndpoint');
+	}
+	if (!(outEndpoint instanceof usb.OutEndpoint)) {
 		throw new Error('endpoint is not an usb.OutEndpoint');
 	}
 	debug('Initialized device correctly', devicePortId(device));
-	return { iface, endpoint };
-};
-
-const secondStageBoot = async (
-	device: usb.Device,
-	endpoint: usb.OutEndpoint,
-) => {
-	console.log(`device${device} & endpoint${endpoint}`);
+	return { iface, inEndpoint, outEndpoint };
 };
 
 export class UsbbootDevice extends EventEmitter {
@@ -217,16 +224,57 @@ export class UsbbootScanner extends EventEmitter {
 		debug('Found serial number', device.deviceDescriptor.iSerialNumber);
 		debug('port id', devicePortId(device));
 		try {
-			const { endpoint } = initializeDevice(device);
+			const { iface, inEndpoint, outEndpoint } = initializeDevice(device);
+			debug('iface', iface);
+			debug('inEndpoint', inEndpoint);
+			debug('outEndpoint', outEndpoint);
+			if (platform === 'win32') {
+				console.log('Running on windows');
+				const rndis = new RNDIS();
+				rndis.initialize(device);
+			}
+			let foundDevice = '';
+			inEndpoint.startPoll(1, 500); // MAXBUFF
+			inEndpoint.on('data', (data: any) => {
+				console.log('I am reciving some data');
+				console.log(JSON.stringify(data));
+				const message = new Message()
+				const request = message.identify(foundDevice, data);
+				switch (request) {
+					case 'unidentified':
+						console.log(request);
+						break;
+					case 'TFTP':
+						console.log(request);
+						break;
+					case 'BOOTP':
+						console.log(request);
+						break;
+					case 'ARP':
+						console.log(request);
+						break;
+					case 'TFTP_Data':
+						console.log(request);
+						break;
+					case 'NC':
+						console.log(request);
+						break;
+					default:
+						console.log(request);
+				}
+			});
+			inEndpoint.on('error', (error: any) => {
+				debug('error', error);
+			});
 			if (device.deviceDescriptor.iSerialNumber === 0) {
 				debug('Sending u-boot-spl.bin', devicePortId(device));
 				this.step(device, 0);
-				await secondStageBoot(device, endpoint);
+				// await secondStageBoot(device, endpoint);
 				// The device will now detach and reattach with iSerialNumber 1.
 				// This takes approximately 1.5 seconds
 			} else {
 				debug('Second stage boot server', devicePortId(device));
-				await this.fileServer(device, endpoint, 2);
+				// await this.fileServer(device, endpoint, 2);
 			}
 			device.close();
 		} catch (error) {
@@ -258,15 +306,6 @@ export class UsbbootScanner extends EventEmitter {
 				this.remove(device);
 			}
 		}, DEVICE_UNPLUG_TIMEOUT);
-	}
-
-	private async fileServer(
-		device: usb.Device,
-		endpoint: usb.OutEndpoint,
-		step: number,
-	) {
-		console.log(`device:${device}, endpoint${endpoint} and step${step}`);
-		// Write file server call here
 	}
 }
 
