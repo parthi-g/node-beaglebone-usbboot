@@ -103,7 +103,7 @@ export class Message {
         const eth2 = this.maker.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4);
         const ip = this.maker.makeIPV4(SERVER_IP, BB_IP, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + BOOTP_SIZE, 0);
         const udp = this.maker.makeUDP(BOOTP_SIZE, udpUboot.udpDest, udpUboot.udpSrc);
-        const bootreply = this.maker.makeBOOTP(SERVER_NAME, serverConfig.bootFile, bootp.xid, serverConfig.ether.h_source, BB_IP, SERVER_IP);
+        const bootreply = this.maker.makeBOOTP(SERVER_NAME, serverConfig.bootpFile, bootp.xid, serverConfig.ether.h_source, BB_IP, SERVER_IP);
         const bootPBuff = Buffer.concat([rndis, eth2, ip, udp, bootreply], FULL_SIZE)
         const bootPServerConfig = serverConfig;
         return { bootPBuff, bootPServerConfig };

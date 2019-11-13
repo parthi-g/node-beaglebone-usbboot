@@ -232,7 +232,7 @@ export class UsbbootScanner extends EventEmitter {
 			}
 			let serverConfig: any = {};
 			serverConfig.foundDevice = '';
-			serverConfig.bootFile = 'u-boot-spl.bin'
+			serverConfig.bootpFile = 'u-boot-spl.bin'
 			inEndpoint.startPoll(1, 500); // MAXBUFF
 			inEndpoint.on('data', (data: any) => {
 				console.log('I am reciving some data');
