@@ -1,3 +1,8 @@
+/**
+ * Remove this file 
+ * Split the code and move index.ts -> message.ts -> protocols
+ */
+
 import * as usb from '@balena.io/usb';
 const sp = require('schemapack');
 const toggle = require('endian-toggle');
@@ -113,7 +118,6 @@ const initialize$ = (device: usb.Device): usb.InEndpoint => {
 	iface0.claim();
 	const inEndpoint = iface0.endpoints[0];
 	if (!(inEndpoint instanceof usb.InEndpoint)) {
-		console.log('endpoint is not an usb.OutEndpoint');
 		throw new Error('endpoint is not an usb.OutEndpoint');
 	} else {
 		inEndpoint.startPoll(1, 256);

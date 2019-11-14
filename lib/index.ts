@@ -40,7 +40,18 @@ export const isUsbBootCapableUSBDevice = (
 		(idProduct === USB_PRODUCT_ID_ROM || idProduct === USB_PRODUCT_ID_SPL)
 	);
 };
-
+export const isROMUSBDevice = (
+	idVendor: number,
+	idProduct: number,
+): boolean => {
+	return (idVendor === USB_VENDOR_ID_TEXAS_INSTRUMENTS && idProduct === USB_PRODUCT_ID_ROM);
+};
+export const isSPLUSBDevice = (
+	idVendor: number,
+	idProduct: number,
+): boolean => {
+	return (idVendor === USB_VENDOR_ID_TEXAS_INSTRUMENTS && idProduct === USB_PRODUCT_ID_SPL);
+};
 const isUsbBootCapableUSBDevice$ = (device: usb.Device): boolean => {
 	return isUsbBootCapableUSBDevice(
 		device.deviceDescriptor.idVendor,
@@ -203,6 +214,7 @@ export class UsbbootScanner extends EventEmitter {
 	}
 
 	private async attachDevice(device: usb.Device): Promise<void> {
+		let fileName;
 		if (this.attachedDeviceIds.has(getDeviceId(device))) {
 			return;
 		}
@@ -218,9 +230,21 @@ export class UsbbootScanner extends EventEmitter {
 		if (!isUsbBootCapableUSBDevice$(device)) {
 			return;
 		}
+		if (device.deviceDescriptor.iSerialNumber != 0) {
+			return;
+		}
+		if (isROMUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
+			fileName = 'u-boot-spl.bin'
+			console.log('Attached Device:ROM:' + JSON.stringify(device));
+		}
+		if (isSPLUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
+			fileName = 'u-boot.img'
+			console.log('Attached Device:SPL:' + JSON.stringify(device));
+		}
 		debug('Found serial number', device.deviceDescriptor.iSerialNumber);
 		debug('port id', devicePortId(device));
 		try {
+			let rndisInEndpoint: usb.InEndpoint;
 			const { iface, inEndpoint, outEndpoint } = initializeDevice(device);
 			debug('iface', iface);
 			debug('inEndpoint', inEndpoint);
@@ -228,15 +252,15 @@ export class UsbbootScanner extends EventEmitter {
 			if (platform === 'win32') {
 				console.log('Running on windows');
 				const rndis = new RNDIS();
-				rndis.initialize(device);
+				rndisInEndpoint = rndis.initialize(device);
 			}
 			let serverConfig: any = {};
 			serverConfig.foundDevice = '';
-			serverConfig.bootpFile = 'u-boot-spl.bin'
+			serverConfig.bootpFile = fileName;
 			inEndpoint.startPoll(1, 500); // MAXBUFF
 			inEndpoint.on('data', (data: any) => {
-				console.log('I am reciving some data');
-				console.log(JSON.stringify(data));
+				// console.log('I am reciving some data');
+				// console.log(JSON.stringify(data));
 				const message = new Message()
 				const request = message.identify(serverConfig.foundDevice, data);
 				switch (request) {
@@ -245,6 +269,14 @@ export class UsbbootScanner extends EventEmitter {
 						break;
 					case 'TFTP':
 						console.log(request);
+						serverConfig = message.getBootFile(data, serverConfig);
+						if (!serverConfig.tftp.fileError) {
+							const { tftpBuff, tftpServerConfig } = message.getTFTPData(serverConfig);
+							serverConfig = tftpServerConfig;
+							this.emit('outTransfer', outEndpoint, request, tftpBuff, 3)
+						} else {
+							this.emit('outTransfer', outEndpoint, request, message.getTFTPError(serverConfig), 3)
+						}
 						break;
 					case 'BOOTP':
 						console.log(request);
@@ -259,7 +291,16 @@ export class UsbbootScanner extends EventEmitter {
 						this.emit('outTransfer', outEndpoint, request, arpBuff, 2)
 						break;
 					case 'TFTP_Data':
-						console.log(request);
+						// console.log(request);
+						if (serverConfig.tftp.i <= serverConfig.tftp.blocks) { // Transfer until all blocks of file are transferred
+							const { tftpBuff, tftpServerConfig } = message.getTFTPData(serverConfig);
+							serverConfig = tftpServerConfig;
+							this.emit('outTransfer', outEndpoint, request, tftpBuff, 3)
+						} else {
+							console.log(`${serverConfig.foundDevice} TFTP transfer complete`);
+							inEndpoint.stopPoll();
+							rndisInEndpoint.stopPoll(); // activate this only for Windows and Mac
+						}
 						break;
 					case 'NC':
 						console.log(request);
@@ -289,13 +330,15 @@ export class UsbbootScanner extends EventEmitter {
 		}
 		// Event for outEnd Transfer
 		this.on('outTransfer', (outEndpoint: usb.OutEndpoint, request: any, response: any, step: number) => {
-			console.log('Step:' + step);
-			console.log('Request:' + request);
-			console.log('Response:' + response);
+			// console.log('Step:' + step);
 			outEndpoint.transfer(response, (error: any) => {
 				if (!error) {
 					if (request == 'BOOTP') {
 						console.log(`BOOTP reply done: atep ${step}`);
+					}
+					if (request == 'TFTP') {
+						console.log(`TFTP reply done: atep ${step}`);
+						// console.log(JSON.stringify(response));
 					}
 				}
 			});

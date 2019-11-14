@@ -81,17 +81,6 @@ export class IP {
             });
         return ipv6Option.parse(buff);
     }
-    /*
-    encodeIpv4(buff: any) {
-
-    }
-    encodeIpv6(buff: any) {
-
-    }
-    encodeIpv6Pseudo(buff: any) {
-
-    }
-    */
 
     // Function for ipv4 header packet
     makeIPV4(src_addr: any, dst_addr: any, proto: any, id_: any, total_len: any, chksum: any) {

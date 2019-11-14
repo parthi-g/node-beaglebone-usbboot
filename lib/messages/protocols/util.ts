@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import * as Path from 'path';
 ///////////////////////////////////////// Function to remove extra byte from last /////////////////////////////////
 export const fixBuff = (buff: Buffer): Buffer => {
     var bufFix = Buffer.alloc(buff.length - 1, 0, 'hex');
@@ -12,3 +14,7 @@ export const stringToAscii = (filename: string): any => {
     }
     return file_name;
 }
+export const safeReadFile = (filename: string): Buffer => {
+    // return await readFile(Path.join(__dirname, '..', 'blobs','am335x', filename));
+    return readFileSync(Path.join('blobs', 'am335x', filename));
+};

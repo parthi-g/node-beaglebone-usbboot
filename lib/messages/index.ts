@@ -1,10 +1,10 @@
 import { Parse, Maker } from './protocols';
+import { safeReadFile } from './protocols/util';
 const BOOTPS = 67;
 const BOOTPC = 68;
 const IP_UDP = 17;
 const IPV6_HOP_BY_HOP_OPTION = 0;
 const IPV6_ICMP = 0x3A;
-//const IP_TCP = 0x06;
 const TFTP_PORT = 69;
 const NETCONSOLE_UDP_PORT = 6666;
 const MDNS_UDP_PORT = 5353;
@@ -25,26 +25,7 @@ const BB_IP = [0xc0, 0xa8, 0x01, 0x03]; // 192.168.1.3
 const FULL_SIZE = 386;
 const SERVER_NAME = [66, 69, 65, 71, 76, 69, 66, 79, 79, 84]; // ASCII ['B','E','A','G','L','E','B','O','O','T']
 const ARP_SIZE = 28;
-/*
-const ARP_OPCODE_REQUEST = 1;
-const ARP_OPCODE_REPLY = 2;
-
-
-
-const ROM = 'ROM';
-const SPL = 'SPL';
-const UMS = 'UMS';
-const ROM_VID = 0x0451;
-const ROM_PID = 0x6141;
-const SPL_VID = 0x0451;
-const SPL_PID = 0xd022;
-const LINUX_COMPOSITE_DEVICE_VID = 0x1d6b;
-const LINUX_COMPOSITE_DEVICE_PID = 0x0104;
-const ARP_SIZE = 28;
-;
-const const TFTP_SIZE = 4;
-
-*/
+const TFTP_SIZE = 4;
 export class Message {
     private parse: Parse;
     private maker: Maker;
@@ -120,4 +101,66 @@ export class Message {
         const arpServerConfig = serverConfig;
         return { arpBuff, arpServerConfig };
     };
+    // Event to process TFTP request
+        getBootFile(data: any, serverConfig: any): any {
+        const udpTFTP_buf = Buffer.alloc(UDP_SIZE);
+        data.copy(udpTFTP_buf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE);
+        serverConfig.tftp = {}; // Object containing TFTP parameters
+        serverConfig.tftp.i = 1; // Keeps count of File Blocks transferred
+        serverConfig.tftp.receivedUdp = this.parse.parseUdp(udpTFTP_buf); // Received UDP packet for SPL tftp
+        serverConfig.tftp.eth2 = this.maker.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4); // Making ether header here, as it remains same for all tftp block transfers
+        const fileName = this.extractName(data);
+        const buff = safeReadFile(fileName)
+        if (buff != undefined) {
+            serverConfig.tftp.blocks = Math.ceil((buff.length + 1) / 512); // Total number of blocks of file
+            serverConfig.tftp.start = 0;
+            serverConfig.tftp.fileData = buff;
+            serverConfig.tftp.fileError = false;
+        } else {
+            console.log('No file data');
+            serverConfig.tftp.fileError = true;
+        }
+        return serverConfig;
+    }
+    // Function to process File data for TFTP
+    getTFTPData(serverConfig: any): { tftpBuff: Buffer, tftpServerConfig: any } {
+        let blockSize = serverConfig.tftp.fileData.length - serverConfig.tftp.start;
+        if (blockSize > 512) blockSize = 512;
+        const blockData = Buffer.alloc(blockSize);
+        serverConfig.tftp.fileData.copy(blockData, 0, serverConfig.tftp.start, serverConfig.tftp.start + blockSize); // Copying data to block
+        serverConfig.tftp.start += blockSize; // Keep counts of bytes transferred upto
+        const rndis = this.maker.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize);
+        const ip = this.maker.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize, 0);
+        const udp = this.maker.makeUDP(TFTP_SIZE + blockSize, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
+        const tftp = this.maker.makeTFTP(3, serverConfig.tftp.i);
+        serverConfig.tftp.i++;
+        const tftpBuff = Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp, blockData], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize);
+        const tftpServerConfig = serverConfig;
+        return { tftpBuff, tftpServerConfig }
+    }
+    // Function to handle TFTP error
+    getTFTPError(serverConfig: any): Buffer {
+        const error_msg = 'File not found';
+        const rndis = this.maker.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
+        const ip = this.maker.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1, 0);
+        const udp = this.maker.makeUDP(TFTP_SIZE + error_msg.length + 1, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
+        const tftp = this.maker.makeTFTPError(5, 1, error_msg);
+        return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
+    };
+    // Function to extract FileName from TFTP packet
+    extractName(data: any) {
+        const fv = RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 2;
+        let nameCount = 0;
+        let name = '';
+        while (data[fv + nameCount] != 0) {
+            name += String.fromCharCode(data[fv + nameCount]);
+            nameCount++;
+        }
+        return name;
+    };
+    async getFileBuffer(filename: string): Promise<Buffer | undefined> {
+        const buffer = await safeReadFile(filename);
+        return buffer;
+    };
+
 }

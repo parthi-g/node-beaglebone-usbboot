@@ -2,6 +2,7 @@ import { ARP } from './arp'
 import { BOOTP } from './bootp'
 import { Eth } from './eth'
 import { IP } from './ip'
+import { TFTP } from './tftp'
 import { UDP } from './udp'
 import { RNDIS } from './rndis';
 export class Parse {
@@ -49,96 +50,13 @@ export class Maker {
     makeBOOTP(serverName: any, fileName: any, xid_: any, hwDest: any, bbIP: any, serverIP: any): Buffer {
         return new BOOTP().makeBOOTP(serverName, fileName, xid_, hwDest, bbIP, serverIP);
     }
-    makeARP(opCode:any, hwSource:any, ipSource:any, hwDest:any, ipDest:any) {
-        return new ARP().makeARP(opCode,hwSource,ipSource,hwDest,ipDest);
+    makeARP(opCode: any, hwSource: any, ipSource: any, hwDest: any, ipDest: any) {
+        return new ARP().makeARP(opCode, hwSource, ipSource, hwDest, ipDest);
+    }
+    makeTFTP(opcode: any, blkNumber: any) {
+        return new TFTP().makeTFTP(opcode, blkNumber);
+    }
+    makeTFTPError(opcode: any, errCode: any, desc: any) {
+        return new TFTP().makeTFTPError(opcode, errCode, desc);
     }
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////// Headers for parsing (Binary-Praser) /////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-// ether header
-const ethhdr = new Parser()
-    .array('h_dest', {
-        type: 'uint8',
-        length: 6
-    })
-    .array('h_source', {
-        type: 'uint8',
-        length: 6
-    })
-    .uint16be('h_proto');
-
-// ARP header
-const arphdr = new Parser()
-    .uint16be('htype')
-    .uint16be('ptype')
-    .uint8('hlen')
-    .uint8('plen')
-    .uint16be('opcode')
-    .array('hw_source', {
-        type: 'uint8',
-        length: 6
-    })
-    .array('ip_source', {
-        type: 'uint8',
-        length: 4
-    })
-    .array('hw_dest', {
-        type: 'uint8',
-        length: 6
-    })
-    .array('ip_dest', {
-        type: 'uint8',
-        length: 4
-    });
-
-// UDP packet
-const udp = new Parser()
-    .uint16be('udpSrc')
-    .uint16be('udpDest')
-    .uint16be('udpLen')
-    .uint16be('chkSum');
-
-// BOOTP packet
-const bootp = new Parser()
-    .uint8('opcode')
-    .uint8('hw')
-    .uint8('hwlength')
-    .uint8('hopcount')
-    .uint32be('xid')
-    .uint16be('secs')
-    .uint16be('flags')
-    .array('ciaddr', {
-        type: 'uint8',
-        length: 4
-    })
-    .array('yiaddr', {
-        type: 'uint8',
-        length: 4
-    })
-    .array('server_ip', {
-        type: 'uint8',
-        length: 4
-    })
-    .array('bootp_gw_ip', {
-        type: 'uint8',
-        length: 4
-    })
-    .array('hwaddr', {
-        type: 'uint8',
-        length: 16
-    })
-    .array('servername', {
-        type: 'uint8',
-        length: 64
-    })
-    .array('bootfile', {
-        type: 'uint8',
-        length: 128
-    })
-    .array('vendor', {
-        type: 'uint8',
-        length: 64
-    });
-*/
