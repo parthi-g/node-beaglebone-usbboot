@@ -107,7 +107,7 @@ const initializeDevice = (
 	return { iface, inEndpoint, outEndpoint };
 };
 
-export class UsbbootDevice extends EventEmitter {
+export class UsbBBbootDevice extends EventEmitter {
 	// LAST_STEP is hardcoded here as it is depends on the bootcode.bin file we send to the pi.
 	// List of steps:
 	// 0) device connects with iSerialNumber 0 and we write bootcode.bin to it
@@ -123,7 +123,7 @@ export class UsbbootDevice extends EventEmitter {
 	}
 
 	get progress() {
-		return Math.round((this._step / UsbbootDevice.LAST_STEP) * 100);
+		return Math.round((this._step / UsbBBbootDevice.LAST_STEP) * 100);
 	}
 
 	get step() {
@@ -136,8 +136,8 @@ export class UsbbootDevice extends EventEmitter {
 	}
 }
 
-export class UsbbootScanner extends EventEmitter {
-	private usbbootDevices = new Map<string, UsbbootDevice>();
+export class UsbBBbootScanner extends EventEmitter {
+	private usbBBbootDevices = new Map<string, UsbBBbootDevice>();
 	private boundAttachDevice: (device: usb.Device) => Promise<void>;
 	private boundDetachDevice: (device: usb.Device) => void;
 	private interval: number | undefined;
@@ -177,39 +177,39 @@ export class UsbbootScanner extends EventEmitter {
 		usb.removeListener('attach', this.boundAttachDevice);
 		usb.removeListener('detach', this.boundDetachDevice);
 		clearInterval(this.interval);
-		this.usbbootDevices.clear();
+		this.usbBBbootDevices.clear();
 	}
 
 	private step(device: usb.Device, step: number): void {
-		const usbbootDevice = this.getOrCreate(device);
-		usbbootDevice.step = step;
-		if (step === UsbbootDevice.LAST_STEP) {
+		const usbBBbootDevice = this.getOrCreate(device);
+		usbBBbootDevice.step = step;
+		if (step === UsbBBbootDevice.LAST_STEP) {
 			this.remove(device);
 		}
 	}
 
-	private get(device: usb.Device): UsbbootDevice | undefined {
+	private get(device: usb.Device): UsbBBbootDevice | undefined {
 		const key = devicePortId(device);
-		return this.usbbootDevices.get(key);
+		return this.usbBBbootDevices.get(key);
 	}
 
-	private getOrCreate(device: usb.Device): UsbbootDevice {
+	private getOrCreate(device: usb.Device): UsbBBbootDevice {
 		const key = devicePortId(device);
-		let usbbootDevice = this.usbbootDevices.get(key);
-		if (usbbootDevice === undefined) {
-			usbbootDevice = new UsbbootDevice(key);
-			this.usbbootDevices.set(key, usbbootDevice);
-			this.emit('attach', usbbootDevice);
+		let usbBBbootDevice = this.usbBBbootDevices.get(key);
+		if (usbBBbootDevice === undefined) {
+			usbBBbootDevice = new UsbBBbootDevice(key);
+			this.usbBBbootDevices.set(key, usbBBbootDevice);
+			this.emit('attach', usbBBbootDevice);
 		}
-		return usbbootDevice;
+		return usbBBbootDevice;
 	}
 
 	private remove(device: usb.Device): void {
 		const key = devicePortId(device);
-		const usbbootDevice = this.usbbootDevices.get(key);
-		if (usbbootDevice !== undefined) {
-			this.usbbootDevices.delete(key);
-			this.emit('detach', usbbootDevice);
+		const usbBBbootDevice = this.usbBBbootDevices.get(key);
+		if (usbBBbootDevice !== undefined) {
+			this.usbBBbootDevices.delete(key);
+			this.emit('detach', usbBBbootDevice);
 		}
 	}
 
@@ -222,7 +222,7 @@ export class UsbbootScanner extends EventEmitter {
 
 		if (
 			isBeagleBoneInMassStorageMode(device) &&
-			this.usbbootDevices.has(devicePortId(device))
+			this.usbBBbootDevices.has(devicePortId(device))
 		) {
 			this.step(device, 41);
 			return;
@@ -356,8 +356,8 @@ export class UsbbootScanner extends EventEmitter {
 		// This timeout is here to differentiate between the device resetting and the device being unplugged
 		// If the step didn't changed in 5 seconds, we assume the device was unplugged.
 		setTimeout(() => {
-			const usbbootDevice = this.get(device);
-			if (usbbootDevice !== undefined && usbbootDevice.step === step) {
+			const usbBBbootDevice = this.get(device);
+			if (usbBBbootDevice !== undefined && usbBBbootDevice.step === step) {
 				debug(
 					'device',
 					devicePortId(device),

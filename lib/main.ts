@@ -1,19 +1,19 @@
-import { UsbbootDevice, UsbbootScanner } from './';
+import { UsbBBbootDevice, UsbBBbootScanner } from './';
 
 const main = () => {
-	const scanner = new UsbbootScanner();
-	scanner.on('attach', (usbbootDevice: UsbbootDevice) => {
-		console.log('device attached', usbbootDevice.portId);
-		usbbootDevice.on('progress', (progress: number) => {
-			console.log('progress', usbbootDevice.portId, progress, '%');
+	const scanner = new UsbBBbootScanner();
+	scanner.on('attach', (usbBBbootDevice: UsbBBbootDevice) => {
+		console.log('device attached', usbBBbootDevice.portId);
+		usbBBbootDevice.on('progress', (progress: number) => {
+			console.log('progress', usbBBbootDevice.portId, progress, '%');
 			if (progress === 100) {
-				console.log('device', usbbootDevice.portId, 'is ready');
+				console.log('device', usbBBbootDevice.portId, 'is ready');
 			}
 		});
 	});
-	scanner.on('detach', (usbbootDevice: UsbbootDevice) => {
-		usbbootDevice.removeAllListeners();
-		console.log('device', usbbootDevice.portId, 'detached');
+	scanner.on('detach', (usbBBbootDevice: UsbBBbootDevice) => {
+		usbBBbootDevice.removeAllListeners();
+		console.log('device', usbBBbootDevice.portId, 'detached');
 	});
 	console.log('Waiting for BeagleBone');
 	scanner.start();
