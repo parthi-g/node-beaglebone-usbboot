@@ -1,5 +1,5 @@
 // tslint:disable:no-bitwise
-import * as usb from '@balena.io/usb';
+import * as usb from 'usb';
 // import { delay, fromCallback, promisify } from 'bluebird';
 // import { promisify } from 'bluebird';
 

@@ -3,7 +3,7 @@
  * Split the code and move index.ts -> message.ts -> protocols
  */
 
-import * as usb from '@balena.io/usb';
+import * as usb from 'usb';
 const sp = require('schemapack');
 const toggle = require('endian-toggle');
 export class RNDIS {
