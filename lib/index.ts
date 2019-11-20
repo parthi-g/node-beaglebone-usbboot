@@ -11,7 +11,7 @@ import * as _os from 'os';
 
 // const readFile = promisify(readFile_);
 import { Message } from './messages'
-import { RNDIS } from './rndis';
+// import { RNDIS } from './rndis';
 const platform = _os.platform();
 const debug = _debug('node-beaglebone-usbboot');
 
@@ -106,6 +106,73 @@ const initializeDevice = (
 	debug('Initialized device correctly', devicePortId(device));
 	return { iface, inEndpoint, outEndpoint };
 };
+const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
+	console.log('RNDIS initialize');
+	const interfaceNumber = 0;
+	const iface0 = device.interface(interfaceNumber);
+	iface0.claim();
+	const iEndpoint = iface0.endpoints[0];
+	if (!(iEndpoint instanceof usb.InEndpoint)) {
+		throw new Error('endpoint is not an usb.OutEndpoint');
+	} else {
+		iEndpoint.startPoll(1, 256);
+	}
+
+	const CONTROL_BUFFER_SIZE = 1025;
+	const message = new Message()
+	const initMsg = message.getRNDISInit(); // RNDIS INIT Message
+	// Windows Control Transfer
+	// https://msdn.microsoft.com/en-us/library/aa447434.aspx
+	// http://www.beyondlogic.org/usbnutshell/usb6.shtml
+	const bmRequestType_send = 0x21; // USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
+	const bmRequestType_receive = 0xa1; // USB_DATA=DeviceToHost | USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
+
+
+	// Sending rndis_init_msg (SEND_ENCAPSULATED_COMMAND)
+	device.controlTransfer(bmRequestType_send, 0, 0, 0, initMsg, error => {
+		if (error)
+			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
+	});
+
+	// Receive rndis_init_cmplt (GET_ENCAPSULATED_RESPONSE)
+	device.controlTransfer(
+		bmRequestType_receive,
+		0x01,
+		0,
+		0,
+		CONTROL_BUFFER_SIZE,
+		error => {
+			if (error)
+				throw new Error(
+					`Control transfer error on GET_ENCAPSULATED ${error}`,
+				);
+		},
+	);
+
+	const setMsg = message.getRNDISSet(); // RNDIS SET Message
+
+	// Send rndis_set_msg (SEND_ENCAPSULATED_COMMAND)
+	device.controlTransfer(bmRequestType_send, 0, 0, 0, setMsg, error => {
+		if (error)
+			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
+	});
+	// Receive rndis_init_cmplt (GET_ENCAPSULATED_RESPONSE)
+	device.controlTransfer(
+		bmRequestType_receive,
+		0x01,
+		0,
+		0,
+		CONTROL_BUFFER_SIZE,
+		error => {
+			if (error)
+				throw new Error(
+					`Control transfer error on GET_ENCAPSULATED ${error}`,
+				);
+		},
+	);
+	return iEndpoint;
+}
+
 
 export class UsbBBbootDevice extends EventEmitter {
 	// LAST_STEP is hardcoded here as it is depends on the bootcode.bin file we send to the pi.
@@ -251,8 +318,9 @@ export class UsbBBbootScanner extends EventEmitter {
 			debug('outEndpoint', outEndpoint);
 			if (platform === 'win32') {
 				console.log('Running on windows');
-				const rndis = new RNDIS();
-				rndisInEndpoint = rndis.initialize(device);
+				// const rndis = new RNDIS();
+				// rndisInEndpoint = rndis.initialize(device);
+				rndisInEndpoint = initializeRNDIS(device)
 			}
 			let serverConfig: any = {};
 			serverConfig.foundDevice = '';

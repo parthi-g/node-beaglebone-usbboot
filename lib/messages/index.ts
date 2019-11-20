@@ -147,6 +147,12 @@ export class Message {
         const tftp = this.maker.makeTFTPError(5, 1, error_msg);
         return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
     };
+    getRNDISInit(){
+        return this.maker.makeRNDISInit();
+    }
+    getRNDISSet(){
+        return this.maker.makeRNDISSet();
+    }
     // Function to extract FileName from TFTP packet
     extractName(data: any) {
         const fv = RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 2;

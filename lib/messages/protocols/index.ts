@@ -38,6 +38,12 @@ export class Maker {
     makeRNDIS(dataLength: number): Buffer {
         return new RNDIS().makeRNDIS(dataLength);
     }
+    makeRNDISInit(): Buffer {
+        return new RNDIS().makeRNDISInit();
+    }
+    makeRNDISSet(): Buffer {
+        return new RNDIS().makeRNDISSet();
+    }
     makeEther2(dest: any, source: any, proto: any): Buffer {
         return new Eth().makeEther2(dest, source, proto)
     }
