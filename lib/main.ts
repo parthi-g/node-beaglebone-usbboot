@@ -1,4 +1,4 @@
-import { UsbBBbootDevice, UsbBBbootScanner } from './';
+import {  UsbBBbootScanner, UsbBBbootDevice } from './';
 
 const main = () => {
 	const scanner = new UsbBBbootScanner();
@@ -12,11 +12,15 @@ const main = () => {
 		});
 	});
 	scanner.on('detach', (usbBBbootDevice: UsbBBbootDevice) => {
-		usbBBbootDevice.removeAllListeners();
 		console.log('device', usbBBbootDevice.portId, 'detached');
 	});
 	console.log('Waiting for BeagleBone');
-	scanner.start();
+	try{
+		scanner.start();
+	}
+	catch(err){
+		console.log(err);
+	}
 };
 
 main();

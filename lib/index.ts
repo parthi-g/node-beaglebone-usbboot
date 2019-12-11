@@ -1,17 +1,10 @@
 // tslint:disable:no-bitwise
 import * as usb from 'usb';
-// import { delay, fromCallback, promisify } from 'bluebird';
-// import { promisify } from 'bluebird';
-
 import * as _debug from 'debug';
 import { EventEmitter } from 'events';
 import * as _os from 'os';
-// import { readFile as readFile_ } from 'fs';
-// import * as Path from 'path';
-
-// const readFile = promisify(readFile_);
 import { Message } from './messages'
-// import { RNDIS } from './rndis';
+// import { reject, resolve } from 'bluebird';
 const platform = _os.platform();
 const debug = _debug('node-beaglebone-usbboot');
 
@@ -79,18 +72,6 @@ const initializeDevice = (
 	// the second is the vendor interface for programming
 
 	const interfaceNumber = 1;
-	// const endpointNumber = 2;
-	/*
-	if (
-		device.configDescriptor.bNumInterfaces ===
-		USB_ENDPOINT_INTERFACES_SOC_BCM2835
-	) {
-		interfaceNumber = 2;
-		endpointNumber = 2;
-	} else {
-		interfaceNumber = 2;
-		endpointNumber = 2;
-	} */
 	const iface = device.interface(interfaceNumber);
 	iface.claim();
 	// const endpoint = iface.endpoint(endpointNumber);
@@ -175,16 +156,8 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 
 
 export class UsbBBbootDevice extends EventEmitter {
-	// LAST_STEP is hardcoded here as it is depends on the bootcode.bin file we send to the pi.
-	// List of steps:
-	// 0) device connects with iSerialNumber 0 and we write bootcode.bin to it
-	// 1) the device detaches
-	// 2 - 39) the device reattaches with iSerialNumber 1 and we upload the files it requires (the number of steps depends on the device)
-	// 40) the device detaches
-	// 41) the device reattaches as a mass storage device
 	public static readonly LAST_STEP = 1122;
 	private _step = 0;
-
 	constructor(public portId: string) {
 		super();
 	}
@@ -209,6 +182,7 @@ export class UsbBBbootScanner extends EventEmitter {
 	private boundDetachDevice: (device: usb.Device) => void;
 	private interval: number | undefined;
 	private stepCounter: number;
+
 	// We use both events ('attach' and 'detach') and polling getDeviceList() on usb.
 	// We don't know which one will trigger the this.attachDevice call.
 	// So we keep track of attached devices ids in attachedDeviceIds to not run it twice.
@@ -236,6 +210,7 @@ export class UsbBBbootScanner extends EventEmitter {
 
 		// ts-ignore because of a confusion between NodeJS.Timer and number
 		// @ts-ignore
+
 		this.interval = setInterval(() => {
 			usb.getDeviceList().forEach(this.boundAttachDevice);
 		}, POLLING_INTERVAL_MS);
@@ -249,18 +224,19 @@ export class UsbBBbootScanner extends EventEmitter {
 	}
 
 	private step(device: usb.Device, step: number): void {
+
 		const usbBBbootDevice = this.getOrCreate(device);
 		usbBBbootDevice.step = step;
 		if (step === UsbBBbootDevice.LAST_STEP) {
 			this.remove(device);
 		}
+
 	}
 
 	private get(device: usb.Device): UsbBBbootDevice | undefined {
 		const key = devicePortId(device);
 		return this.usbBBbootDevices.get(key);
 	}
-
 	private getOrCreate(device: usb.Device): UsbBBbootDevice {
 		const key = devicePortId(device);
 		let usbBBbootDevice = this.usbBBbootDevices.get(key);
@@ -284,7 +260,6 @@ export class UsbBBbootScanner extends EventEmitter {
 	private async attachDevice(device: usb.Device): Promise<void> {
 		let fileName;
 		if (this.attachedDeviceIds.has(getDeviceId(device))) {
-			// console.log('Device already exist')
 			return;
 		}
 		this.attachedDeviceIds.add(getDeviceId(device));
@@ -301,25 +276,21 @@ export class UsbBBbootScanner extends EventEmitter {
 		}
 		if (isROMUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
 			fileName = 'u-boot-spl.bin';
-			this.stepCounter =0 ;
-			// console.log('Attached Device:ROM:' + JSON.stringify(device));
+			this.stepCounter = 0;
 		}
 		if (isSPLUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
-			fileName = 'u-boot.img'
-			// console.log('Attached Device:SPL:' + JSON.stringify(device));
+			fileName = 'u-boot.img';
 		}
 		debug('Found serial number', device.deviceDescriptor.iSerialNumber);
 		debug('port id', devicePortId(device));
 		try {
 			let rndisInEndpoint: usb.InEndpoint;
 			const { iface, inEndpoint, outEndpoint } = initializeDevice(device);
+			
 			debug('iface', iface);
 			debug('inEndpoint', inEndpoint);
 			debug('outEndpoint', outEndpoint);
 			if (platform === 'win32') {
-				// console.log('Running on windows');
-				// const rndis = new RNDIS();
-				// rndisInEndpoint = rndis.initialize(device);
 				rndisInEndpoint = initializeRNDIS(device)
 			}
 			let serverConfig: any = {};
@@ -327,52 +298,52 @@ export class UsbBBbootScanner extends EventEmitter {
 			serverConfig.bootpFile = fileName;
 			inEndpoint.startPoll(1, 500); // MAXBUFF
 			inEndpoint.on('data', (data: any) => {
-				// console.log('I am reciving some data');
-				// console.log(JSON.stringify(data));
 				const message = new Message()
 				const request = message.identify(serverConfig.foundDevice, data);
 				switch (request) {
 					case 'unidentified':
-						// console.log(request);
 						break;
 					case 'TFTP':
-						// console.log(request);
 						serverConfig = message.getBootFile(data, serverConfig);
 						if (!serverConfig.tftp.fileError) {
 							const { tftpBuff, tftpServerConfig } = message.getTFTPData(serverConfig);
 							serverConfig = tftpServerConfig;
-							this.emit('outTransfer', outEndpoint, request, tftpBuff, this.stepCounter++);
+							this.transfer(device, outEndpoint, request, tftpBuff, this.stepCounter++);
+
 						} else {
-							this.emit('outTransfer', outEndpoint, request, message.getTFTPError(serverConfig), this.stepCounter)
+							this.transfer(device, outEndpoint, request, message.getTFTPError(serverConfig), this.stepCounter);
 						}
 						break;
 					case 'BOOTP':
-						// console.log(request);
 						const { bootPBuff, bootPServerConfig } = message.getBOOTPResponse(data, serverConfig);
 						serverConfig = bootPServerConfig;
-						this.emit('outTransfer', outEndpoint, request, bootPBuff, this.stepCounter++);
+						this.transfer(device, outEndpoint, request, bootPBuff, this.stepCounter++);
 						break;
 					case 'ARP':
 						// console.log(request);
 						const { arpBuff, arpServerConfig } = message.getARResponse(data, serverConfig)
 						serverConfig = arpServerConfig;
-						this.emit('outTransfer', outEndpoint, request, arpBuff, this.stepCounter++);
+						this.transfer(device, outEndpoint, request, arpBuff, this.stepCounter++);
 						break;
 					case 'TFTP_Data':
 						// console.log(request);
-						if (serverConfig.tftp.i <= serverConfig.tftp.blocks) { // Transfer until all blocks of file are transferred
 							const { tftpBuff, tftpServerConfig } = message.getTFTPData(serverConfig);
 							serverConfig = tftpServerConfig;
-							this.emit('outTransfer', outEndpoint, request, tftpBuff, this.stepCounter++)
-						} else {
-							// console.log(`${serverConfig.foundDevice} TFTP transfer complete`);
-							inEndpoint.stopPoll();
-							if(platform!='linux'){
-								rndisInEndpoint.stopPoll(); // activate this only for Windows and Mac
-							}
-							this.step(device,this.stepCounter++);
-							// console.log(`Number of steps completed:${this.stepCounter}`);
-						}
+							this.transfer(device, outEndpoint, request, tftpBuff, this.stepCounter++).then(out=>{
+								if(out){
+									if(serverConfig.tftp.i > serverConfig.tftp.blocks){
+										if (platform != 'linux') {
+											rndisInEndpoint.stopPoll(); // activate this only for Windows and Mac
+										}
+										inEndpoint.stopPoll();
+										this.step(device, this.stepCounter++);
+										device.close();
+									}
+								}
+							}).catch(err=>{
+								console.log(err);
+							});
+
 						break;
 					case 'NC':
 						console.log(request);
@@ -381,57 +352,62 @@ export class UsbBBbootScanner extends EventEmitter {
 						console.log(request);
 				}
 			});
-			inEndpoint.on('error', (error: any) => {
-				debug('error', error);
-			});
 			// device.close();
+			inEndpoint.on('error', (error: any) => {
+
+				console.log('error:' + error);
+			});
 		} catch (error) {
-			// console.log(error);
+			// console.log(error)
+
 			debug('error', error, devicePortId(device));
 			this.remove(device);
 		}
-		// Event for outEnd Transfer
-		this.on('outTransfer', (outEndpoint: usb.OutEndpoint, request: any, response: any, step: number) => {
-			// console.log('Step:' + step);
-			outEndpoint.transfer(response, (error: any) => {
-				if (!error) {
-					if (request == 'BOOTP') {
-						this.step(device,step);
-						// console.log(`BOOTP reply done: step ${step}`);
-					}
-					if (request == 'ARP') {
-						this.step(device,step);
-						// console.log(`ARP reply done: step ${step}`);
-					}
-					if (request == 'TFTP') {
-						this.step(device,step);
-						// console.log(`TFTP reply done: step ${step}`);
-					}
-					if (request == 'TFTP_Data') {
-						this.step(device,step);
-						// console.log(`TFTP Data reply done: step ${step}`);
-						
-					}
-				}
-			});
-		});
 	}
-
+	private transfer(device: usb.Device, outEndpoint: usb.OutEndpoint, request: any, response: any, step: number):Promise<any> {
+		return new Promise((resolve,reject)=>{
+			try{
+				outEndpoint.transfer(response, (error: any) => {
+					if (!error) {
+						if (request == 'BOOTP') {
+							this.step(device, step);
+							// console.log(`BOOTP reply done: step ${step}`);
+						}
+						if (request == 'ARP') {
+							this.step(device, step);
+							// console.log(`ARP reply done: step ${step}`);
+						}
+						if (request == 'TFTP') {
+							this.step(device, step);
+							// console.log(`TFTP reply done: step ${step}`);
+						}
+						if (request == 'TFTP_Data') {
+							this.step(device, step);
+							// console.log(`TFTP Data reply done: step ${step}`);
+		
+						}
+					} else {
+						console.log('Out transfer Error:' + error);
+						reject(error);
+					}
+				});
+				resolve(true);
+	
+			}catch(err){
+				reject(err)
+			}
+	
+		});
+	
+	}
 	private detachDevice(device: usb.Device): void {
-		// console.log('Detatch Device:' + device);
 		this.attachedDeviceIds.delete(getDeviceId(device));
 		if (!isUsbBootCapableUSBDevice$(device)) {
 			return;
 		}
-		// const step = device.deviceDescriptor.iSerialNumber === 0 ? 1 : 40;
-		const step = UsbBBbootDevice.LAST_STEP;
-		debug('detach', devicePortId(device), step);
-		this.step(device, step);
-		// This timeout is here to differentiate between the device resetting and the device being unplugged
-		// If the step didn't changed in 5 seconds, we assume the device was unplugged.
 		setTimeout(() => {
 			const usbBBbootDevice = this.get(device);
-			if (usbBBbootDevice !== undefined && usbBBbootDevice.step === step) {
+			if (usbBBbootDevice !== undefined && usbBBbootDevice.step === UsbBBbootDevice.LAST_STEP) {
 				debug(
 					'device',
 					devicePortId(device),
@@ -442,6 +418,7 @@ export class UsbBBbootScanner extends EventEmitter {
 				this.remove(device);
 			}
 		}, DEVICE_UNPLUG_TIMEOUT);
+
 	}
 }
 
