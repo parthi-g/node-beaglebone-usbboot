@@ -4,7 +4,6 @@ import * as _debug from 'debug';
 import { EventEmitter } from 'events';
 import * as _os from 'os';
 import { Message } from './messages'
-// import { reject, resolve } from 'bluebird';
 const platform = _os.platform();
 const debug = _debug('node-beaglebone-usbboot');
 
@@ -16,8 +15,7 @@ const DEVICE_UNPLUG_TIMEOUT = 5000;
 const USB_VENDOR_ID_TEXAS_INSTRUMENTS = 0x0451;
 const USB_PRODUCT_ID_ROM = 0x6141;
 const USB_PRODUCT_ID_SPL = 0xd022;
-
-// When the pi reboots in mass storage mode, it has this product id
+// usb.setDebugLevel(4);
 // const USB_VENDOR_ID_NETCHIP_TECHNOLOGY = 0x0525;
 const USB_PRODUCT_ID_POCKETBOOK_PRO_903 = 0xa4a5;
 
@@ -65,15 +63,22 @@ const initializeDevice = (
 	outEndpoint: usb.OutEndpoint;
 } => {
 	// interface is a reserved keyword in TypeScript so we use iface
-
 	debug('bInterface', device.configDescriptor.bNumInterfaces);
 	device.open();
+
 	// Handle 2837 where it can start with two interfaces, the first is mass storage
 	// the second is the vendor interface for programming
 
 	const interfaceNumber = 1;
 	const iface = device.interface(interfaceNumber);
+	if (platform != 'win32') { // Not supported in Windows
+		// Detach Kernel Driver
+		if (iface.isKernelDriverActive()) {
+		  iface.detachKernelDriver();
+		}
+	  }
 	iface.claim();
+
 	// const endpoint = iface.endpoint(endpointNumber);
 	const inEndpoint = iface.endpoints[0];
 	const outEndpoint = iface.endpoints[1];
@@ -154,27 +159,6 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 	return iEndpoint;
 }
 
-
-export class UsbBBbootDevice extends EventEmitter {
-	public static readonly LAST_STEP = 1122;
-	private _step = 0;
-	constructor(public portId: string) {
-		super();
-	}
-
-	get progress() {
-		return Math.round((this._step / UsbBBbootDevice.LAST_STEP) * 100);
-	}
-
-	get step() {
-		return this._step;
-	}
-
-	set step(step: number) {
-		this._step = step;
-		this.emit('progress', this.progress);
-	}
-}
 
 export class UsbBBbootScanner extends EventEmitter {
 	private usbBBbootDevices = new Map<string, UsbBBbootDevice>();
@@ -277,10 +261,18 @@ export class UsbBBbootScanner extends EventEmitter {
 		if (isROMUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
 			fileName = 'u-boot-spl.bin';
 			this.stepCounter = 0;
+			this.process(device,fileName);
 		}
 		if (isSPLUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
-			fileName = 'u-boot.img';
+			// usb.setDebugLevel(4);
+			setTimeout(() => {
+				fileName = 'u-boot.img';
+				this.process(device,fileName);
+			},500);
 		}
+		
+	}
+	private process(device:usb.Device,fileName:string):void{
 		debug('Found serial number', device.deviceDescriptor.iSerialNumber);
 		debug('port id', devicePortId(device));
 		try {
@@ -297,6 +289,7 @@ export class UsbBBbootScanner extends EventEmitter {
 			serverConfig.foundDevice = '';
 			serverConfig.bootpFile = fileName;
 			inEndpoint.startPoll(1, 500); // MAXBUFF
+		
 			inEndpoint.on('data', (data: any) => {
 				const message = new Message()
 				const request = message.identify(serverConfig.foundDevice, data);
@@ -334,19 +327,17 @@ export class UsbBBbootScanner extends EventEmitter {
 									if(serverConfig.tftp.i > serverConfig.tftp.blocks){
 										if (platform != 'linux') {
 											rndisInEndpoint.stopPoll(); // activate this only for Windows and Mac
+											inEndpoint.stopPoll();
 										}
-										inEndpoint.stopPoll();
+										// inEndpoint.stopPoll();
 										this.step(device, this.stepCounter++);
-										device.close();
 									}
 								}
 							}).catch(err=>{
+								inEndpoint.stopPoll();
 								console.log(err);
 							});
 
-						break;
-					case 'NC':
-						console.log(request);
 						break;
 					default:
 						console.log(request);
@@ -354,12 +345,9 @@ export class UsbBBbootScanner extends EventEmitter {
 			});
 			// device.close();
 			inEndpoint.on('error', (error: any) => {
-
 				console.log('error:' + error);
 			});
 		} catch (error) {
-			// console.log(error)
-
 			debug('error', error, devicePortId(device));
 			this.remove(device);
 		}
@@ -419,6 +407,27 @@ export class UsbBBbootScanner extends EventEmitter {
 			}
 		}, DEVICE_UNPLUG_TIMEOUT);
 
+	}
+}
+
+export class UsbBBbootDevice extends EventEmitter {
+	public static readonly LAST_STEP = 1122;
+	private _step = 0;
+	constructor(public portId: string) {
+		super();
+	}
+
+	get progress() {
+		return Math.round((this._step / UsbBBbootDevice.LAST_STEP) * 100);
+	}
+
+	get step() {
+		return this._step;
+	}
+
+	set step(step: number) {
+		this._step = step;
+		this.emit('progress', this.progress);
 	}
 }
 
