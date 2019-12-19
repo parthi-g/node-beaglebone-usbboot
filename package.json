@@ -6,8 +6,8 @@
   "types": "build/index.d.ts",
   "scripts": {
     "prettier": "prettier --config ./node_modules/resin-lint/config/.prettierrc --write \"lib/**/*.ts\"",
-    "lint": "resin-lint --typescript lib/*.ts",
-    "build": "npm run lint && rimraf build && tsc",
+    "lint": "resin-lint --typescript lib",
+    "build": "rimraf build && tsc",
     "prepublish": "npm run build"
   },
   "files": [

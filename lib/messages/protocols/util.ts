@@ -14,7 +14,13 @@ export const stringToAscii = (filename: string): any => {
     }
     return file_name;
 }
-export const safeReadFile = (filename: string): Buffer => {
-    // return await readFile(Path.join(__dirname, '..', 'blobs','am335x', filename));
-    return readFileSync(Path.join('blobs', 'am335x', filename));
-};
+export const safeReadFile = (filename: string): Buffer | undefined  => {
+	try {
+        let filePath =Path.join(__dirname, '..','..', '..','blobs','am335x', filename);
+		return  readFileSync(filePath);
+	} catch (e) {
+        // no data
+        console.log('File read error'+e);
+        return undefined;
+    }
+}
