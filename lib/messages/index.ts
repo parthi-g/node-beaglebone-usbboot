@@ -11,7 +11,6 @@ const MDNS_UDP_PORT = 5353;
 const ETH_TYPE_ARP = 0x0806;
 const ETH_TYPE_IPV4 = 0x0800;
 const ETH_TYPE_IPV6 = 0x86DD;
-const LINUX_COMPOSITE_DEVICE = 'LINUX_COMPOSITE_DEVICE';
 // Size of all protocol headers
 const RNDIS_SIZE = 44;
 const ETHER_SIZE = 14;
@@ -33,21 +32,20 @@ export class Message {
         this.parse = new Parse();
         this.maker = new Maker();
     }
-    identify(foundDevice: string, buff: any): string {
-        let rndisHeaderSize = (foundDevice === LINUX_COMPOSITE_DEVICE) ? 0 : RNDIS_SIZE;
+    identify(buff: any): string {
         const parse = new Parse();
-        const ether = parse.parseEthHdr(buff.slice(rndisHeaderSize));
+        const ether = parse.parseEthHdr(buff.slice(RNDIS_SIZE));
         if (ether.h_proto === ETH_TYPE_ARP) return 'ARP';
         if (ether.h_proto === ETH_TYPE_IPV4) {
-            const ipv4 = parse.parseIpv4(buff.slice(rndisHeaderSize + ETHER_SIZE));
+            const ipv4 = parse.parseIpv4(buff.slice(RNDIS_SIZE + ETHER_SIZE));
             if (ipv4.Protocol === 2) return 'IGMP';
             if (ipv4.Protocol === IP_UDP) {
-                const udp = parse.parseUdp(buff.slice(rndisHeaderSize + ETHER_SIZE + IPV4_SIZE));
+                const udp = parse.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE));
                 const sPort = udp.udpSrc;
                 const dPort = udp.udpDest;
                 if (sPort == BOOTPC && dPort == BOOTPS) return 'BOOTP'; // Port 68: BOOTP Client, Port 67: BOOTP Server
                 if (dPort == TFTP_PORT) {
-                    const opcode = buff[rndisHeaderSize + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 1];
+                    const opcode = buff[RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 1];
                     if (opcode == 1) return 'TFTP'; // Opcode = 1 for Read Request (RRQ)
                     if (opcode == 4) return 'TFTP_Data'; // Opcode = 4 for Acknowledgement (ACK)
                 }
@@ -56,13 +54,13 @@ export class Message {
             }
         }
         if (ether.h_proto === ETH_TYPE_IPV6) {
-            const ipv6 = parse.parseIpv6(buff.slice(rndisHeaderSize + ETHER_SIZE));
+            const ipv6 = parse.parseIpv6(buff.slice(RNDIS_SIZE + ETHER_SIZE));
             if (ipv6.NextHeader === IPV6_HOP_BY_HOP_OPTION) {
-                const ipv6Option = parse.parseIpv6Option(buff.slice(rndisHeaderSize + ETHER_SIZE + IPV6_SIZE));
+                const ipv6Option = parse.parseIpv6Option(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
                 if (ipv6Option.NextHeader === IPV6_ICMP) return 'ICMPv6';
             }
             if (ipv6.NextHeader === IP_UDP) {
-                const udp = parse.parseUdp(buff.slice(rndisHeaderSize + ETHER_SIZE + IPV6_SIZE));
+                const udp = parse.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
                 if (udp.udpSrc == MDNS_UDP_PORT && udp.udpDest == MDNS_UDP_PORT) return 'mDNS';
             }
         }
@@ -102,7 +100,7 @@ export class Message {
         return { arpBuff, arpServerConfig };
     };
     // Event to process TFTP request
-        getBootFile(data: any, serverConfig: any): any {
+    getBootFile(data: any, serverConfig: any): any {
         const udpTFTP_buf = Buffer.alloc(UDP_SIZE);
         data.copy(udpTFTP_buf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE);
         serverConfig.tftp = {}; // Object containing TFTP parameters
@@ -147,10 +145,10 @@ export class Message {
         const tftp = this.maker.makeTFTPError(5, 1, error_msg);
         return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
     };
-    getRNDISInit(){
+    getRNDISInit() {
         return this.maker.makeRNDISInit();
     }
-    getRNDISSet(){
+    getRNDISSet() {
         return this.maker.makeRNDISSet();
     }
     // Function to extract FileName from TFTP packet
