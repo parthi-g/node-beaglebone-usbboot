@@ -59,12 +59,7 @@ const initializeDevice = (
 	inEndpoint: usb.InEndpoint;
 	outEndpoint: usb.OutEndpoint;
 } => {
-	// interface is a reserved keyword in TypeScript so we use iface
 	debug('bInterface', device.configDescriptor.bNumInterfaces);
-
-	// Handle 2837 where it can start with two interfaces, the first is mass storage
-	// the second is the vendor interface for programming
-
 	const interfaceNumber = 1;
 	const iface = device.interface(interfaceNumber);
 	if (platform != 'win32') { // Not supported in Windows
