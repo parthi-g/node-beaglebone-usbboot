@@ -1,4 +1,4 @@
-import { Parse, Maker } from './protocols';
+import { Parser, Encoder } from './protocols';
 import { safeReadFile } from './protocols/util';
 const BOOTPS = 67;
 const BOOTPC = 68;
@@ -26,21 +26,21 @@ const SERVER_NAME = [66, 69, 65, 71, 76, 69, 66, 79, 79, 84]; // ASCII ['B','E',
 const ARP_SIZE = 28;
 const TFTP_SIZE = 4;
 export class Message {
-    private parse: Parse;
-    private maker: Maker;
+    private parser: Parser;
+    private encoder: Encoder;
     constructor() {
-        this.parse = new Parse();
-        this.maker = new Maker();
+        this.parser = new Parser();
+        this.encoder = new Encoder();
     }
     identify(buff: any): string {
-        const parse = new Parse();
-        const ether = parse.parseEthHdr(buff.slice(RNDIS_SIZE));
+        const parser = new Parser();
+        const ether = parser.parseEthHdr(buff.slice(RNDIS_SIZE));
         if (ether.h_proto === ETH_TYPE_ARP) return 'ARP';
         if (ether.h_proto === ETH_TYPE_IPV4) {
-            const ipv4 = parse.parseIpv4(buff.slice(RNDIS_SIZE + ETHER_SIZE));
+            const ipv4 = parser.parseIpv4(buff.slice(RNDIS_SIZE + ETHER_SIZE));
             if (ipv4.Protocol === 2) return 'IGMP';
             if (ipv4.Protocol === IP_UDP) {
-                const udp = parse.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE));
+                const udp = parser.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE));
                 const sPort = udp.udpSrc;
                 const dPort = udp.udpDest;
                 if (sPort == BOOTPC && dPort == BOOTPS) return 'BOOTP'; // Port 68: BOOTP Client, Port 67: BOOTP Server
@@ -54,13 +54,13 @@ export class Message {
             }
         }
         if (ether.h_proto === ETH_TYPE_IPV6) {
-            const ipv6 = parse.parseIpv6(buff.slice(RNDIS_SIZE + ETHER_SIZE));
+            const ipv6 = parser.parseIpv6(buff.slice(RNDIS_SIZE + ETHER_SIZE));
             if (ipv6.NextHeader === IPV6_HOP_BY_HOP_OPTION) {
-                const ipv6Option = parse.parseIpv6Option(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
+                const ipv6Option = parser.parseIpv6Option(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
                 if (ipv6Option.NextHeader === IPV6_ICMP) return 'ICMPv6';
             }
             if (ipv6.NextHeader === IP_UDP) {
-                const udp = parse.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
+                const udp = parser.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
                 if (udp.udpSrc == MDNS_UDP_PORT && udp.udpDest == MDNS_UDP_PORT) return 'mDNS';
             }
         }
@@ -75,14 +75,14 @@ export class Message {
         data.copy(udpBuf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, MAXBUF);
         data.copy(bootpBuf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE, MAXBUF);
         data.copy(etherBuf, 0, RNDIS_SIZE, MAXBUF);
-        serverConfig.ether = this.parse.parseEthHdr(etherBuf); // Gets decoded ether packet data
-        const udpUboot = this.parse.parseUdp(udpBuf); // parsed udp header
-        const bootp = this.parse.parseBOOTP(bootpBuf); // parsed bootp header
-        const rndis = this.maker.makeRNDIS(FULL_SIZE - RNDIS_SIZE);
-        const eth2 = this.maker.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4);
-        const ip = this.maker.makeIPV4(SERVER_IP, BB_IP, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + BOOTP_SIZE, 0);
-        const udp = this.maker.makeUDP(BOOTP_SIZE, udpUboot.udpDest, udpUboot.udpSrc);
-        const bootreply = this.maker.makeBOOTP(SERVER_NAME, serverConfig.bootpFile, bootp.xid, serverConfig.ether.h_source, BB_IP, SERVER_IP);
+        serverConfig.ether = this.parser.parseEthHdr(etherBuf); // Gets decoded ether packet data
+        const udpUboot = this.parser.parseUdp(udpBuf); // parsed udp header
+        const bootp = this.parser.parseBOOTP(bootpBuf); // parsed bootp header
+        const rndis = this.encoder.makeRNDIS(FULL_SIZE - RNDIS_SIZE);
+        const eth2 = this.encoder.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4);
+        const ip = this.encoder.makeIPV4(SERVER_IP, BB_IP, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + BOOTP_SIZE, 0);
+        const udp = this.encoder.makeUDP(BOOTP_SIZE, udpUboot.udpDest, udpUboot.udpSrc);
+        const bootreply = this.encoder.makeBOOTP(SERVER_NAME, serverConfig.bootpFile, bootp.xid, serverConfig.ether.h_source, BB_IP, SERVER_IP);
         const bootPBuff = Buffer.concat([rndis, eth2, ip, udp, bootreply], FULL_SIZE)
         const bootPServerConfig = serverConfig;
         return { bootPBuff, bootPServerConfig };
@@ -91,10 +91,10 @@ export class Message {
     getARResponse(data: any, serverConfig: any): { arpBuff: Buffer, arpServerConfig: any } {
         const arpBuf = Buffer.alloc(ARP_SIZE);
         data.copy(arpBuf, 0, RNDIS_SIZE + ETHER_SIZE, RNDIS_SIZE + ETHER_SIZE + ARP_SIZE);
-        serverConfig.receivedARP = this.parse.parseARP(arpBuf); // Parsed received ARP request
-        const arpResponse = this.maker.makeARP(2, serverConfig.ether.h_dest, serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.hw_source, serverConfig.receivedARP.ip_source);
-        const rndis = this.maker.makeRNDIS(ETHER_SIZE + ARP_SIZE);
-        const eth2 = this.maker.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_ARP);
+        serverConfig.receivedARP = this.parser.parseARP(arpBuf); // Parsed received ARP request
+        const arpResponse = this.encoder.makeARP(2, serverConfig.ether.h_dest, serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.hw_source, serverConfig.receivedARP.ip_source);
+        const rndis = this.encoder.makeRNDIS(ETHER_SIZE + ARP_SIZE);
+        const eth2 = this.encoder.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_ARP);
         const arpBuff = Buffer.concat([rndis, eth2, arpResponse], RNDIS_SIZE + ETHER_SIZE + ARP_SIZE);
         const arpServerConfig = serverConfig;
         return { arpBuff, arpServerConfig };
@@ -105,8 +105,8 @@ export class Message {
         data.copy(udpTFTP_buf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE);
         serverConfig.tftp = {}; // Object containing TFTP parameters
         serverConfig.tftp.i = 1; // Keeps count of File Blocks transferred
-        serverConfig.tftp.receivedUdp = this.parse.parseUdp(udpTFTP_buf); // Received UDP packet for SPL tftp
-        serverConfig.tftp.eth2 = this.maker.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4); // Making ether header here, as it remains same for all tftp block transfers
+        serverConfig.tftp.receivedUdp = this.parser.parseUdp(udpTFTP_buf); // Received UDP packet for SPL tftp
+        serverConfig.tftp.eth2 = this.encoder.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4); // Making ether header here, as it remains same for all tftp block transfers
         const fileName = this.extractName(data);
         const buff = safeReadFile(fileName)
         if (buff != undefined) {
@@ -115,7 +115,6 @@ export class Message {
             serverConfig.tftp.fileData = buff;
             serverConfig.tftp.fileError = false;
         } else {
-            console.log('No file data');
             serverConfig.tftp.fileError = true;
         }
         return serverConfig;
@@ -127,10 +126,10 @@ export class Message {
         const blockData = Buffer.alloc(blockSize);
         serverConfig.tftp.fileData.copy(blockData, 0, serverConfig.tftp.start, serverConfig.tftp.start + blockSize); // Copying data to block
         serverConfig.tftp.start += blockSize; // Keep counts of bytes transferred upto
-        const rndis = this.maker.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize);
-        const ip = this.maker.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize, 0);
-        const udp = this.maker.makeUDP(TFTP_SIZE + blockSize, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
-        const tftp = this.maker.makeTFTP(3, serverConfig.tftp.i);
+        const rndis = this.encoder.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize);
+        const ip = this.encoder.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize, 0);
+        const udp = this.encoder.makeUDP(TFTP_SIZE + blockSize, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
+        const tftp = this.encoder.makeTFTP(3, serverConfig.tftp.i);
         serverConfig.tftp.i++;
         const tftpBuff = Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp, blockData], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + blockSize);
         const tftpServerConfig = serverConfig;
@@ -139,17 +138,17 @@ export class Message {
     // Function to handle TFTP error
     getTFTPError(serverConfig: any): Buffer {
         const error_msg = 'File not found';
-        const rndis = this.maker.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
-        const ip = this.maker.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1, 0);
-        const udp = this.maker.makeUDP(TFTP_SIZE + error_msg.length + 1, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
-        const tftp = this.maker.makeTFTPError(5, 1, error_msg);
+        const rndis = this.encoder.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
+        const ip = this.encoder.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1, 0);
+        const udp = this.encoder.makeUDP(TFTP_SIZE + error_msg.length + 1, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
+        const tftp = this.encoder.makeTFTPError(5, 1, error_msg);
         return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
     };
     getRNDISInit() {
-        return this.maker.makeRNDISInit();
+        return this.encoder.makeRNDISInit();
     }
     getRNDISSet() {
-        return this.maker.makeRNDISSet();
+        return this.encoder.makeRNDISSet();
     }
     // Function to extract FileName from TFTP packet
     extractName(data: any) {

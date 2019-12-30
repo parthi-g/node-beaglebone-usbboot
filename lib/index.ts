@@ -14,7 +14,6 @@ const DEVICE_UNPLUG_TIMEOUT = 5000;
 const USB_VENDOR_ID_TEXAS_INSTRUMENTS = 0x0451;
 const USB_PRODUCT_ID_ROM = 0x6141;
 const USB_PRODUCT_ID_SPL = 0xd022;
-// usb.setDebugLevel(4);
 
 const getDeviceId = (device: usb.Device): string => {
 	return `${device.busNumber}:${device.deviceAddress}`;
@@ -72,7 +71,6 @@ const initializeDevice = (
 	const inEndpoint = iface.endpoints[0];
 	const outEndpoint = iface.endpoints[1];
 	if (!(inEndpoint instanceof usb.InEndpoint)) {
-		console.log('endpoint is not an usb.OutEndpoint');
 		throw new Error('endpoint is not an usb.OutEndpoint');
 	}
 	if (!(outEndpoint instanceof usb.OutEndpoint)) {
@@ -234,7 +232,6 @@ export class UsbBBbootScanner extends EventEmitter {
 		this.attachedDeviceIds.add(getDeviceId(device));
 
 		if (isBeagleBoneInMassStorageMode(device)) {
-			console.log('BeagleBone in storage mode!')
 			this.step(device, UsbBBbootDevice.LAST_STEP);
 			return;
 		}
@@ -249,7 +246,6 @@ export class UsbBBbootScanner extends EventEmitter {
 			this.process(device, 'u-boot-spl.bin');
 		}
 		if (isSPLUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {
-			console.log('SPL Device Found');
 			setTimeout(() => {
 				this.process(device, 'u-boot.img');
 			}, 500);
@@ -263,7 +259,7 @@ export class UsbBBbootScanner extends EventEmitter {
 			if (platform === 'win32' || platform === 'darwin') {
 				rndisInEndpoint = initializeRNDIS(device)
 				rndisInEndpoint.on('error', (error: any) => {
-					console.log('RNDIS InEndpoint Error:' + error);
+					debug('RNDIS InEndpoint Error', error);
 				});
 			}
 			const { inEndpoint, outEndpoint } = initializeDevice(device);
@@ -272,7 +268,7 @@ export class UsbBBbootScanner extends EventEmitter {
 			inEndpoint.startPoll(1, 500); // MAXBUFF
 
 			inEndpoint.on('error', (error: any) => {
-				console.log('InEndpoint Error:' + error);
+				debug('InEndpoint Error', error);
 			});
 
 			inEndpoint.on('data', (data: any) => {
@@ -317,7 +313,7 @@ export class UsbBBbootScanner extends EventEmitter {
 						}
 						break;
 					default:
-						console.log(request);
+						debug('Request', request);
 				}
 			});
 		} catch (error) {
@@ -342,7 +338,7 @@ export class UsbBBbootScanner extends EventEmitter {
 						this.step(device, step);
 					}
 				} else {
-					console.log('Out transfer Error:' + cb);
+					debug('Out transfer Error',cb)
 					reject(cb);
 				}
 			});

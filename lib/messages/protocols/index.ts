@@ -5,7 +5,7 @@ import { IP } from './ip'
 import { TFTP } from './tftp'
 import { UDP } from './udp'
 import { RNDIS } from './rndis';
-export class Parse {
+export class Parser {
     // ether header
     parseEthHdr(buff: any) {
         return new Eth().parseEthHdr(buff);
@@ -33,7 +33,7 @@ export class Parse {
     }
 
 }
-export class Maker {
+export class Encoder {
     // Make RNDIS
     makeRNDIS(dataLength: number): Buffer {
         return new RNDIS().makeRNDIS(dataLength);
