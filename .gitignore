@@ -1,5 +1,5 @@
   
-/lib
+lib
 node_modules
 *.swo
 .DS_store

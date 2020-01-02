@@ -97,27 +97,29 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 	// https://msdn.microsoft.com/en-us/library/aa447434.aspx
 	// http://www.beyondlogic.org/usbnutshell/usb6.shtml
 	const bmRequestTypeSend = 0x21; // USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
-	const bmRequestType_receive = 0xa1; // USB_DATA=DeviceToHost | USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
+	const bmRequestTypeReceive = 0xa1; // USB_DATA=DeviceToHost | USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
 
 
 	// Sending rndis_init_msg (SEND_ENCAPSULATED_COMMAND)
 	device.controlTransfer(bmRequestTypeSend, 0, 0, 0, initMsg, error => {
-		if (error)
+		if (error){
 			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
+		}
 	});
 
 	// Receive rndis_init_cmplt (GET_ENCAPSULATED_RESPONSE)
 	device.controlTransfer(
-		bmRequestType_receive,
+		bmRequestTypeReceive,
 		0x01,
 		0,
 		0,
 		CONTROL_BUFFER_SIZE,
 		error => {
-			if (error)
+			if (error){
 				throw new Error(
 					`Control transfer error on GET_ENCAPSULATED ${error}`,
 				);
+			}
 		},
 	);
 
@@ -125,21 +127,23 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 
 	// Send rndis_set_msg (SEND_ENCAPSULATED_COMMAND)
 	device.controlTransfer(bmRequestTypeSend, 0, 0, 0, setMsg, error => {
-		if (error)
+		if (error){
 			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
+		}
 	});
 	// Receive rndis_init_cmplt (GET_ENCAPSULATED_RESPONSE)
 	device.controlTransfer(
-		bmRequestType_receive,
+		bmRequestTypeReceive,
 		0x01,
 		0,
 		0,
 		CONTROL_BUFFER_SIZE,
 		error => {
-			if (error)
+			if (error){
 				throw new Error(
 					`Control transfer error on GET_ENCAPSULATED ${error}`,
 				);
+			}
 		},
 	);
 	return iEndpoint;
@@ -238,7 +242,7 @@ export class UsbBBbootScanner extends EventEmitter {
 		if (!isUsbBootCapableUSBDevice$(device)) {
 			return;
 		}
-		if (device.deviceDescriptor.iSerialNumber != 0) {
+		if (device.deviceDescriptor.iSerialNumber !== 0) {
 			return;
 		}
 		if (isROMUSBDevice(device.deviceDescriptor.idVendor, device.deviceDescriptor.idProduct)) {

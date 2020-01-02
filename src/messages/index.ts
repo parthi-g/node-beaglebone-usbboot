@@ -1,4 +1,4 @@
-import { Parser, Encoder } from './protocols';
+import { Encoder, Parser } from './protocols';
 import { safeReadFile } from './protocols/util';
 const BOOTPS = 67;
 const BOOTPC = 68;
@@ -32,43 +32,43 @@ export class Message {
         this.parser = new Parser();
         this.encoder = new Encoder();
     }
-    identify(buff: any): string {
+    public identify(buff: any): string {
         const parser = new Parser();
         const ether = parser.parseEthHdr(buff.slice(RNDIS_SIZE));
-        if (ether.h_proto === ETH_TYPE_ARP) return 'ARP';
+        if (ether.h_proto === ETH_TYPE_ARP) { return 'ARP'; }
         if (ether.h_proto === ETH_TYPE_IPV4) {
             const ipv4 = parser.parseIpv4(buff.slice(RNDIS_SIZE + ETHER_SIZE));
-            if (ipv4.Protocol === 2) return 'IGMP';
+            if (ipv4.Protocol === 2) { return 'IGMP'; }
             if (ipv4.Protocol === IP_UDP) {
                 const udp = parser.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE));
                 const sPort = udp.udpSrc;
                 const dPort = udp.udpDest;
-                if (sPort == BOOTPC && dPort == BOOTPS) return 'BOOTP'; // Port 68: BOOTP Client, Port 67: BOOTP Server
-                if (dPort == TFTP_PORT) {
+                if (sPort === BOOTPC && dPort === BOOTPS) { return 'BOOTP'; } // Port 68: BOOTP Client, Port 67: BOOTP Server
+                if (dPort === TFTP_PORT) {
                     const opcode = buff[RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 1];
-                    if (opcode == 1) return 'TFTP'; // Opcode = 1 for Read Request (RRQ)
-                    if (opcode == 4) return 'TFTP_Data'; // Opcode = 4 for Acknowledgement (ACK)
+                    if (opcode === 1) { return 'TFTP'; } // Opcode = 1 for Read Request (RRQ)
+                    if (opcode === 4) { return 'TFTP_Data'; } // Opcode = 4 for Acknowledgement (ACK)
                 }
-                if (dPort == NETCONSOLE_UDP_PORT) return 'NC';
-                if (dPort == MDNS_UDP_PORT && sPort == MDNS_UDP_PORT) return 'mDNS';
+                if (dPort === NETCONSOLE_UDP_PORT) { return 'NC'; }
+                if (dPort === MDNS_UDP_PORT && sPort === MDNS_UDP_PORT) { return 'mDNS'; }
             }
         }
         if (ether.h_proto === ETH_TYPE_IPV6) {
             const ipv6 = parser.parseIpv6(buff.slice(RNDIS_SIZE + ETHER_SIZE));
             if (ipv6.NextHeader === IPV6_HOP_BY_HOP_OPTION) {
                 const ipv6Option = parser.parseIpv6Option(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
-                if (ipv6Option.NextHeader === IPV6_ICMP) return 'ICMPv6';
+                if (ipv6Option.NextHeader === IPV6_ICMP) { return 'ICMPv6'; }
             }
             if (ipv6.NextHeader === IP_UDP) {
                 const udp = parser.parseUdp(buff.slice(RNDIS_SIZE + ETHER_SIZE + IPV6_SIZE));
-                if (udp.udpSrc == MDNS_UDP_PORT && udp.udpDest == MDNS_UDP_PORT) return 'mDNS';
+                if (udp.udpSrc === MDNS_UDP_PORT && udp.udpDest === MDNS_UDP_PORT) { return 'mDNS'; }
             }
         }
         return 'unidentified';
     }
 
     // Function to process BOOTP request
-    getBOOTPResponse(data: any, serverConfig: any): { bootPBuff: Buffer, bootPServerConfig: any } {
+    public getBOOTPResponse(data: any, serverConfig: any): { bootPBuff: Buffer, bootPServerConfig: any } {
         const etherBuf = Buffer.alloc(MAXBUF - RNDIS_SIZE);
         const udpBuf = Buffer.alloc(UDP_SIZE);
         const bootpBuf = Buffer.alloc(BOOTP_SIZE);
@@ -88,7 +88,7 @@ export class Message {
         return { bootPBuff, bootPServerConfig };
     }
     // Function to process ARP request
-    getARResponse(data: any, serverConfig: any): { arpBuff: Buffer, arpServerConfig: any } {
+    public getARResponse(data: any, serverConfig: any): { arpBuff: Buffer, arpServerConfig: any } {
         const arpBuf = Buffer.alloc(ARP_SIZE);
         data.copy(arpBuf, 0, RNDIS_SIZE + ETHER_SIZE, RNDIS_SIZE + ETHER_SIZE + ARP_SIZE);
         serverConfig.receivedARP = this.parser.parseARP(arpBuf); // Parsed received ARP request
@@ -100,16 +100,16 @@ export class Message {
         return { arpBuff, arpServerConfig };
     };
     // Event to process TFTP request
-    getBootFile(data: any, serverConfig: any): any {
-        const udpTFTP_buf = Buffer.alloc(UDP_SIZE);
-        data.copy(udpTFTP_buf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE);
+    public getBootFile(data: any, serverConfig: any): any {
+        const udpTFTPBuf = Buffer.alloc(UDP_SIZE);
+        data.copy(udpTFTPBuf, 0, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE, RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE);
         serverConfig.tftp = {}; // Object containing TFTP parameters
         serverConfig.tftp.i = 1; // Keeps count of File Blocks transferred
-        serverConfig.tftp.receivedUdp = this.parser.parseUdp(udpTFTP_buf); // Received UDP packet for SPL tftp
+        serverConfig.tftp.receivedUdp = this.parser.parseUdp(udpTFTPBuf); // Received UDP packet for SPL tftp
         serverConfig.tftp.eth2 = this.encoder.makeEther2(serverConfig.ether.h_source, serverConfig.ether.h_dest, ETH_TYPE_IPV4); // Making ether header here, as it remains same for all tftp block transfers
         const fileName = this.extractName(data);
         const buff = safeReadFile(fileName)
-        if (buff != undefined) {
+        if (buff !== undefined) {
             serverConfig.tftp.blocks = Math.ceil((buff.length + 1) / 512); // Total number of blocks of file
             serverConfig.tftp.start = 0;
             serverConfig.tftp.fileData = buff;
@@ -120,9 +120,9 @@ export class Message {
         return serverConfig;
     }
     // Function to process File data for TFTP
-    getTFTPData(serverConfig: any): { tftpBuff: Buffer, tftpServerConfig: any } {
+    public getTFTPData(serverConfig: any): { tftpBuff: Buffer, tftpServerConfig: any } {
         let blockSize = serverConfig.tftp.fileData.length - serverConfig.tftp.start;
-        if (blockSize > 512) blockSize = 512;
+        if (blockSize > 512) { blockSize = 512; }
         const blockData = Buffer.alloc(blockSize);
         serverConfig.tftp.fileData.copy(blockData, 0, serverConfig.tftp.start, serverConfig.tftp.start + blockSize); // Copying data to block
         serverConfig.tftp.start += blockSize; // Keep counts of bytes transferred upto
@@ -136,32 +136,32 @@ export class Message {
         return { tftpBuff, tftpServerConfig }
     }
     // Function to handle TFTP error
-    getTFTPError(serverConfig: any): Buffer {
-        const error_msg = 'File not found';
-        const rndis = this.encoder.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
-        const ip = this.encoder.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1, 0);
-        const udp = this.encoder.makeUDP(TFTP_SIZE + error_msg.length + 1, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
-        const tftp = this.encoder.makeTFTPError(5, 1, error_msg);
-        return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + error_msg.length + 1);
+    public getTFTPError(serverConfig: any): Buffer {
+        const errorMsg = 'File not found';
+        const rndis = this.encoder.makeRNDIS(ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + errorMsg.length + 1);
+        const ip = this.encoder.makeIPV4(serverConfig.receivedARP.ip_dest, serverConfig.receivedARP.ip_source, IP_UDP, 0, IPV4_SIZE + UDP_SIZE + TFTP_SIZE + errorMsg.length + 1, 0);
+        const udp = this.encoder.makeUDP(TFTP_SIZE + errorMsg.length + 1, serverConfig.tftp.receivedUdp.udpDest, serverConfig.tftp.receivedUdp.udpSrc);
+        const tftp = this.encoder.makeTFTPError(5, 1, errorMsg);
+        return Buffer.concat([rndis, serverConfig.tftp.eth2, ip, udp, tftp], RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + TFTP_SIZE + errorMsg.length + 1);
     };
-    getRNDISInit() {
+    public getRNDISInit() {
         return this.encoder.makeRNDISInit();
     }
-    getRNDISSet() {
+    public getRNDISSet() {
         return this.encoder.makeRNDISSet();
     }
     // Function to extract FileName from TFTP packet
-    extractName(data: any) {
+    public extractName(data: any) {
         const fv = RNDIS_SIZE + ETHER_SIZE + IPV4_SIZE + UDP_SIZE + 2;
         let nameCount = 0;
         let name = '';
-        while (data[fv + nameCount] != 0) {
+        while (data[fv + nameCount] !== 0) {
             name += String.fromCharCode(data[fv + nameCount]);
             nameCount++;
         }
         return name;
     };
-    async getFileBuffer(filename: string): Promise<Buffer | undefined> {
+    public async getFileBuffer(filename: string): Promise<Buffer | undefined> {
         const buffer = await safeReadFile(filename);
         return buffer;
     };
