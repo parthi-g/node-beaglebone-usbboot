@@ -151,7 +151,7 @@ export class UsbBBbootScanner extends EventEmitter {
 	private boundAttachDevice: (device: usb.Device) => Promise<void>;
 	private boundDetachDevice: (device: usb.Device) => void;
 	private interval: number | undefined;
-	private stepCounter: number;
+	private stepCounter: number = 0;
 
 	// We use both events ('attach' and 'detach') and polling getDeviceList() on usb.
 	// We don't know which one will trigger the this.attachDevice call.
@@ -338,7 +338,7 @@ export class UsbBBbootScanner extends EventEmitter {
 						this.step(device, step);
 					}
 				} else {
-					debug('Out transfer Error',cb)
+					debug('Out transfer Error', cb)
 					reject(cb);
 				}
 			});

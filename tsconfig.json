@@ -2,20 +2,20 @@
 	"compilerOptions": {
 		"typeRoots": ["typings", "node_modules/@types"],
 		"module": "commonjs",
-		"outDir": "build",
+		"outDir": "./lib",
 		"sourceMap": true,
 		"declaration": true,
 		"target": "es6",
+		"strict": true,
 		"noImplicitAny": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"strictNullChecks": true
 	},
 	"include": [
-		"lib/*"
+		"src"
 	],
 	"exclude": [
-		"node_modules",
-		"build"
+		"node_modules"
 	]
 }

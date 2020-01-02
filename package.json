@@ -2,18 +2,14 @@
   "name": "node-beaglebone-usbboot",
   "version": "1.0.0",
   "description": "Transforms BeagleBone to mass storage device",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
-    "prettier": "prettier --config ./node_modules/resin-lint/config/.prettierrc --write \"lib/**/*.ts\"",
-    "lint": "resin-lint --typescript lib",
-    "build": "rimraf build && tsc",
-    "prepublish": "npm run build"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rimraf lib && tsc"
   },
   "files": [
-    "build/index.js",
-    "build/index.d.ts",
-    "build/index.js.map",
+    "lib/**/*",
     "blobs",
     "README.md",
     "CHANGELOG.md"
@@ -42,9 +38,7 @@
     "schemapack": "^1.4.2"
   },
   "devDependencies": {
-    "@types/bluebird": "^3.5.20",
     "@types/debug": "0.0.30",
-    "resin-lint": "^3.0.1",
     "rimraf": "^2.6.2",
     "ts-node": "^6.0.3",
     "typescript": "^2.9.1"
