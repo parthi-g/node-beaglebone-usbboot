@@ -61,7 +61,7 @@ const initializeDevice = (
 	debug('bInterface', device.configDescriptor.bNumInterfaces);
 	const interfaceNumber = 1;
 	const iface = device.interface(interfaceNumber);
-	if (platform != 'win32') { // Not supported in Windows
+	if (platform !== 'win32') { // Not supported in Windows
 		// Detach Kernel Driver
 		if (iface.isKernelDriverActive()) {
 			iface.detachKernelDriver();
@@ -96,12 +96,12 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 	// Windows Control Transfer
 	// https://msdn.microsoft.com/en-us/library/aa447434.aspx
 	// http://www.beyondlogic.org/usbnutshell/usb6.shtml
-	const bmRequestType_send = 0x21; // USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
+	const bmRequestTypeSend = 0x21; // USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
 	const bmRequestType_receive = 0xa1; // USB_DATA=DeviceToHost | USB_TYPE=CLASS | USB_RECIPIENT=INTERFACE
 
 
 	// Sending rndis_init_msg (SEND_ENCAPSULATED_COMMAND)
-	device.controlTransfer(bmRequestType_send, 0, 0, 0, initMsg, error => {
+	device.controlTransfer(bmRequestTypeSend, 0, 0, 0, initMsg, error => {
 		if (error)
 			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
 	});
@@ -124,7 +124,7 @@ const initializeRNDIS = (device: usb.Device): usb.InEndpoint => {
 	const setMsg = message.getRNDISSet(); // RNDIS SET Message
 
 	// Send rndis_set_msg (SEND_ENCAPSULATED_COMMAND)
-	device.controlTransfer(bmRequestType_send, 0, 0, 0, setMsg, error => {
+	device.controlTransfer(bmRequestTypeSend, 0, 0, 0, setMsg, error => {
 		if (error)
 			throw new Error(`Control transfer error on SEND_ENCAPSULATED ${error}`);
 	});
@@ -325,16 +325,16 @@ export class UsbBBbootScanner extends EventEmitter {
 		return new Promise((resolve, reject) => {
 			outEndpoint.transfer(response, (cb: any) => {
 				if (!cb) {
-					if (request == 'BOOTP') {
+					if (request === 'BOOTP') {
 						this.step(device, step);
 					}
-					if (request == 'ARP') {
+					if (request === 'ARP') {
 						this.step(device, step);
 					}
-					if (request == 'TFTP') {
+					if (request === 'TFTP') {
 						this.step(device, step);
 					}
-					if (request == 'TFTP_Data') {
+					if (request === 'TFTP_Data') {
 						this.step(device, step);
 					}
 				} else {
@@ -368,18 +368,18 @@ export class UsbBBbootScanner extends EventEmitter {
 }
 export class UsbBBbootDevice extends EventEmitter {
 	public static readonly LAST_STEP = 1124;
-	private _step = 0;
+	private STEP = 0;
 	constructor(public portId: string) {
 		super();
 	}
 	get progress() {
-		return Math.round((this._step / UsbBBbootDevice.LAST_STEP) * 100);
+		return Math.round((this.STEP / UsbBBbootDevice.LAST_STEP) * 100);
 	}
 	get step() {
-		return this._step;
+		return this.STEP;
 	}
 	set step(step: number) {
-		this._step = step;
+		this.STEP = step;
 		this.emit('progress', this.progress);
 	}
 }
