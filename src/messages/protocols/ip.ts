@@ -36,13 +36,13 @@ export class IP {
       .uint8('Protocol')
       .uint16('HeaderChecksum')
       .array('SourceAddress', {
-        type: 'uint8',
         length: 4,
+        type: 'uint8',
       })
       .array('DestinationAddress', {
-        type: 'uint8',
         length: 4,
-      });
+        type: 'uint8',
+    });
     return ipv4Hdr.parse(buff);
   }
   public parseIpv6(buff: any) {
@@ -53,19 +53,19 @@ export class IP {
       // .uint8('TrafficClass')
       // .bit20('FlowLabel') // Left 4 bits to hackaround bug
       .array('VTF', {
-        type: 'uint8',
         length: 4,
+        type: 'uint8',
       })
       .uint16('PayloadLength')
       .uint8('NextHeader')
       .uint8('HopLimit')
       .array('SourceAddress', {
-        type: 'uint8',
         length: 16,
+        type: 'uint8',
       })
       .array('DestinationAddress', {
-        type: 'uint8',
         length: 16,
+        type: 'uint8',
       });
     return ipv6Hdr.parse(buff);
   }
@@ -103,8 +103,8 @@ export class IP {
     if (!chksum) {
       const ip = new Parser() // Parsing packet data as array of 2 byte words
         .array('data', {
-          type: 'uint16be',
           length: 10,
+          type: 'uint16be',
         });
       const ip_packet = ip.parse(data);
       // Checksum calculation

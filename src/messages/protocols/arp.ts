@@ -25,20 +25,20 @@ export class ARP {
       .uint8('plen')
       .uint16be('opcode')
       .array('hw_source', {
-        type: 'uint8',
         length: 6,
+        type: 'uint8',
       })
       .array('ip_source', {
-        type: 'uint8',
         length: 4,
+        type: 'uint8',
       })
       .array('hw_dest', {
-        type: 'uint8',
         length: 6,
+        type: 'uint8',
       })
       .array('ip_dest', {
-        type: 'uint8',
         length: 4,
+        type: 'uint8',
       });
     return arphdr.parse(buff);
   }
