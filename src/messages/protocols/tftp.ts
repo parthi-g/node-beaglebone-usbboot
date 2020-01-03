@@ -1,3 +1,5 @@
+/* tslint:disable */
+
 import { fixBuff } from './util';
 const sp = require('schemapack');
 

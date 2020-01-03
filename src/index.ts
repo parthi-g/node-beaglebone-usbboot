@@ -261,6 +261,7 @@ export class UsbBBbootScanner extends EventEmitter {
           case 'TFTP':
             serverConfig = message.getBootFile(data, serverConfig);
             if (!serverConfig.tftp.fileError) {
+              // tslint:disable-next-line
               const { tftpBuff, tftpServerConfig } = message.getTFTPData(serverConfig);
               serverConfig = tftpServerConfig;
               this.transfer(device, outEndpoint, request, tftpBuff, this.stepCounter++);
@@ -336,6 +337,7 @@ export class UsbBBbootScanner extends EventEmitter {
     }, DEVICE_UNPLUG_TIMEOUT);
   }
 }
+// tslint:disable-next-line
 export class UsbBBbootDevice extends EventEmitter {
   public static readonly LAST_STEP = 1124;
   private STEP = 0;

@@ -1,3 +1,5 @@
+/* tslint:disable */
+
 import { fixBuff } from './util';
 const sp = require('schemapack');
 const bp = require('binary-parser-encoder'); // Binary parser module
@@ -42,7 +44,7 @@ export class IP {
       .array('DestinationAddress', {
         length: 4,
         type: 'uint8',
-    });
+      });
     return ipv4Hdr.parse(buff);
   }
   public parseIpv6(buff: any) {

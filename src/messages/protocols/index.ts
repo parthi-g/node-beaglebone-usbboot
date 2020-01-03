@@ -2,9 +2,9 @@ import { ARP } from './arp';
 import { BOOTP } from './bootp';
 import { Eth } from './eth';
 import { IP } from './ip';
+import { RNDIS } from './rndis';
 import { TFTP } from './tftp';
 import { UDP } from './udp';
-import { RNDIS } from './rndis';
 export class Parser {
   // ether header
   public parseEthHdr(buff: any) {
@@ -32,6 +32,7 @@ export class Parser {
     return new ARP().parseARP(buff);
   }
 }
+// tslint:disable-next-line
 export class Encoder {
   // Make RNDIS
   public makeRNDIS(dataLength: number): Buffer {
@@ -46,14 +47,14 @@ export class Encoder {
   public makeEther2(dest: any, source: any, proto: any): Buffer {
     return new Eth().makeEther2(dest, source, proto);
   }
-  public makeIPV4(srcAddr: any, dstAddr: any, proto: any, id_: any, totalLen: any, chksum: any): Buffer {
-    return new IP().makeIPV4(srcAddr, dstAddr, proto, id_, totalLen, chksum);
+  public makeIPV4(srcAddr: any, dstAddr: any, proto: any, id: any, totalLen: any, chksum: any): Buffer {
+    return new IP().makeIPV4(srcAddr, dstAddr, proto, id, totalLen, chksum);
   }
   public makeUDP(udpDataLen: any, srcPort: any, dstPort: any): Buffer {
     return new UDP().makeUDP(udpDataLen, srcPort, dstPort);
   }
-  public makeBOOTP(serverName: any, fileName: any, xid_: any, hwDest: any, bbIP: any, serverIP: any): Buffer {
-    return new BOOTP().makeBOOTP(serverName, fileName, xid_, hwDest, bbIP, serverIP);
+  public makeBOOTP(serverName: any, fileName: any, xid: any, hwDest: any, bbIP: any, serverIP: any): Buffer {
+    return new BOOTP().makeBOOTP(serverName, fileName, xid, hwDest, bbIP, serverIP);
   }
   public makeARP(opCode: any, hwSource: any, ipSource: any, hwDest: any, ipDest: any) {
     return new ARP().makeARP(opCode, hwSource, ipSource, hwDest, ipDest);

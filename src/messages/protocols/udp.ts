@@ -1,3 +1,5 @@
+/* tslint:disable */
+
 import { fixBuff } from './util';
 const bp = require('binary-parser-encoder'); // Binary parser module
 const sp = require('schemapack');
