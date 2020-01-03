@@ -12,7 +12,7 @@ const ethhdr_e = sp.build([
   
 export class Eth {
     // ether header
-    parseEthHdr(buff: any) {
+    public parseEthHdr(buff: any) {
         const ethhdr = new Parser()
             .array('h_dest', {
                 type: 'uint8',
@@ -29,7 +29,8 @@ export class Eth {
 
 
     // Function for ether2 data packet
-    makeEther2(dest:any, source:any, proto:any) {
+
+   public makeEther2(dest:any, source:any, proto:any) {
         const eth = [
             { h_dest: dest },
             { h_source: source },

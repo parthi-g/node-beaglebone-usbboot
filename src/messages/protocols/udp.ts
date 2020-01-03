@@ -3,7 +3,7 @@ const bp = require('binary-parser-encoder'); // Binary parser module
 const sp = require('schemapack');
 const Parser = bp.Parser;
 // UDP Packet for encoding
-var udp_e = sp.build([
+const udp_e = sp.build([
     { udpSrc: 'uint16' },            // Server UDP port
     { udpDst: 'uint16' },            // BB UDP port
     { udpLen: 'uint16' },            // UDP data length + UDP header length
@@ -11,7 +11,7 @@ var udp_e = sp.build([
     { pad: 'string' }
 ]);
 export class UDP {
-    parseUdp(buff: any) {
+    public parseUdp(buff: any) {
         // UDP packet
         const udp = new Parser()
             .uint16be('udpSrc')
@@ -21,8 +21,8 @@ export class UDP {
         return udp.parse(buff);
     }
     // Function for UDP packet
-    makeUDP(udpDataLen: any, srcPort: any, dstPort: any) {
-        var udp = [
+    public makeUDP(udpDataLen: any, srcPort: any, dstPort: any) {
+        const udp = [
             { udpSrc: srcPort },
             { udpDst: dstPort },
             { udpLen: udpDataLen + 8 },

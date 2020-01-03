@@ -21,7 +21,7 @@ const iphdr2 = sp.build([
 ]);
 
 export class IP {
-    parseIpv4(buff: any) {
+    public parseIpv4(buff: any) {
         // Parser for IPv4 Header
         const ipv4Hdr = new Parser()
             .endianess('big')
@@ -45,7 +45,7 @@ export class IP {
             });
         return ipv4Hdr.parse(buff);
     }
-    parseIpv6(buff: any) {
+    public parseIpv6(buff: any) {
         // Parser for IPv6 Header
         const ipv6Hdr = new Parser()
             .endianess('big')
@@ -69,7 +69,7 @@ export class IP {
             });
         return ipv6Hdr.parse(buff);
     }
-    parseIpv6Option(buff: any) {
+    public parseIpv6Option(buff: any) {
         // IPv6 Hop By Hop Option
         const ipv6Option = new Parser()
             .endianess('big')
@@ -83,7 +83,7 @@ export class IP {
     }
 
     // Function for ipv4 header packet
-    makeIPV4(src_addr: any, dst_addr: any, proto: any, id_: any, total_len: any, chksum: any) {
+    public makeIPV4(src_addr: any, dst_addr: any, proto: any, id_: any, total_len: any, chksum: any) {
         const ip1 = [
             { ver_hl: 69 },
             { tos: 0 },

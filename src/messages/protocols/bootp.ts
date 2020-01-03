@@ -21,7 +21,7 @@ const bootp2 = sp.build([
     { hwaddr: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8' } },  // MAC Address of client (BB)
     { pad: 'string' }
 ]);
-const bootp_servername = sp.build([
+const bootpServername = sp.build([
     {
         servername: {
             0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8',
@@ -30,7 +30,7 @@ const bootp_servername = sp.build([
     },                                    // Server Name
     { pad: 'string' }
 ]);
-const bootp_bootfile = sp.build([ // Name of File (max 72 char here) to boot, splitted in 8 parts as max object size supported is 9
+const bootpBootfile = sp.build([ // Name of File (max 72 char here) to boot, splitted in 8 parts as max object size supported is 9
     { bootfile1: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
     { bootfile2: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
     { bootfile3: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
@@ -42,25 +42,25 @@ const bootp_bootfile = sp.build([ // Name of File (max 72 char here) to boot, sp
     { pad: 'string' }
 ]);
 // Max array size supported is 9, splitting vendor field in two parts
-const bootp_vendor1 = sp.build([       // Vendor extensions (4 Byte MAGIC COOKIE and DHCP OPTIONS)
+const bootpVendor1 = sp.build([       // Vendor extensions (4 Byte MAGIC COOKIE and DHCP OPTIONS)
     { vendor1: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
     { pad: 'string' }
 ]);
-const bootp_vendor2 = sp.build([
+const bootpVendor2 = sp.build([
     { vendor2: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
     { pad: 'string' }
 ]);
-const bootp_vendor3 = sp.build([
+const bootpVendor3 = sp.build([
     { vendor3: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8', 5: 'uint8', 6: 'uint8', 7: 'uint8', 8: 'uint8' } },
     { pad: 'string' }
 ]);
-const bootp_vendor4 = sp.build([
+const bootpVendor4 = sp.build([
     { vendor4: { 0: 'uint8', 1: 'uint8', 2: 'uint8', 3: 'uint8', 4: 'uint8' } },
     { pad: 'string' }
 ]);
 
 export class BOOTP {
-    parseBOOTP(buff: any) {
+    public parseBOOTP(buff: any) {
         // BOOTP packet
         const bootp = new Parser()
             .uint8('opcode')
@@ -108,7 +108,7 @@ export class BOOTP {
     }
 
     // Function for BOOTP packet
-    makeBOOTP(server_name: any, file_name: any, xid_: any, hw_dest: any, BB_ip: any, serverIP: any) {
+    public makeBOOTP(server_name: any, file_name: any, xid_: any, hw_dest: any, BB_ip: any, serverIP: any) {
         const bootp_1 = [
             { opcode: 2 },
             { hw: 1 },
@@ -144,14 +144,14 @@ export class BOOTP {
         const buf1 = fixBuff(bootp1.encode(bootp_1));
         const buf2 = fixBuff(bootp2.encode(bootp_2));
         const buf2_ = Buffer.alloc(10);           // Remaining 10 bytes out of 16 of hwaddr
-        const buf3 = fixBuff(bootp_servername.encode(servername));
+        const buf3 = fixBuff(bootpServername.encode(servername));
         const buf3_ = Buffer.alloc(54);           // Remaining 54 bytes out of 64 of servername
-        const buf4 = fixBuff(bootp_bootfile.encode(bootfile));
+        const buf4 = fixBuff(bootpBootfile.encode(bootfile));
         const buf4_ = Buffer.alloc(56);          // Remaining 56 bytes out of 128 of bootfile
-        const buf5 = fixBuff(bootp_vendor1.encode(vendor1));
-        const buf5a = fixBuff(bootp_vendor2.encode(vendor2));
-        const buf5b = fixBuff(bootp_vendor3.encode(vendor3));
-        const buf5c = fixBuff(bootp_vendor4.encode(vendor4));
+        const buf5 = fixBuff(bootpVendor1.encode(vendor1));
+        const buf5a = fixBuff(bootpVendor2.encode(vendor2));
+        const buf5b = fixBuff(bootpVendor3.encode(vendor3));
+        const buf5c = fixBuff(bootpVendor4.encode(vendor4));
         const buf5d = Buffer.alloc(32);           // Remaining 32 bytes out of 64 of vendor
         return Buffer.concat([buf1, buf2, buf2_, buf3, buf3_, buf4, buf4_, buf5, buf5a, buf5b, buf5c, buf5d], 300);
 

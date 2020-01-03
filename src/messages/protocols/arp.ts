@@ -17,7 +17,7 @@ const arphdr_e = sp.build([
   ]);
   
 export class ARP {
-    parseARP(buff: any) {
+    public parseARP(buff: any) {
         const arphdr = new Parser()
             .uint16be('htype')
             .uint16be('ptype')
@@ -43,7 +43,7 @@ export class ARP {
         return arphdr.parse(buff);
     }
     // Function for ARP response
-    makeARP(opcode:any, hw_source:any, ip_source:any, hw_dest:any, ip_dest:any) {
+    public makeARP(opcode:any, hw_source:any, ip_source:any, hw_dest:any, ip_dest:any) {
         const arp = [
             { htype: 1 },
             { ptype: 0x0800 },

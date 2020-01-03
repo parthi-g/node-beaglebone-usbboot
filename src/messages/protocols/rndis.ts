@@ -13,7 +13,7 @@ const rndis_1 = sp.build([
 ]);
 const rndis_2 = sp.build([
     { band_len: 'uint32' },      // not used here
-    { out_band_elements: 'uint32' }, //not used here
+    { out_band_elements: 'uint32' }, // not used here
     { packet_offset: 'uint32' },     // not used here
     { packet_info_len: 'uint32' },   // not used here
     { reserved_first: 'uint32' },    // not used here
@@ -33,14 +33,14 @@ const rndis_init_hdr = sp.build([
 
 // RNDIS Set Header (https://msdn.microsoft.com/en-us/library/ms919826.aspx)
 const rndis_set_hdr = sp.build([
-	{ msg_type: 'uint32' },
-	{ msg_len: 'uint32' },
-	{ request_id: 'uint32' },
-	{ oid: 'uint32' },
-	{ len: 'uint32' },
-	{ offset: 'uint32' },
-	{ reserved: 'uint32' },
-	{ pad: 'string' },
+    { msg_type: 'uint32' },
+    { msg_len: 'uint32' },
+    { request_id: 'uint32' },
+    { oid: 'uint32' },
+    { len: 'uint32' },
+    { offset: 'uint32' },
+    { reserved: 'uint32' },
+    { pad: 'string' },
 ]);
 
 // oid parameter of 4 bytes
@@ -48,7 +48,7 @@ const oid = sp.build([{ oid_param: 'uint32' }, { pad: 'string' }]);
 
 export class RNDIS {
     // Function for rndis data packet
-    makeRNDIS(dataLength: number): Buffer {
+    public makeRNDIS(dataLength: number): Buffer {
         const rndis1 = [
             { msg_type: 0x00000001 },
             { msg_len: dataLength + 44 },
@@ -70,7 +70,7 @@ export class RNDIS {
         const data = Buffer.concat([buf1, buf2], 44);
         return toggle(data, 32);    // convert byte order to little endian
     }
-    makeRNDISInit(): Buffer {
+    public makeRNDISInit(): Buffer {
         const rndis_init = [
             { msg_type: 2 },
             { msg_len: 24 },
@@ -83,23 +83,23 @@ export class RNDIS {
         const data = fixBuff(rndis_init_hdr.encode(rndis_init));
         return toggle(data, 32); // convert byte order to little endian
     }
-    makeRNDISSet(): Buffer {
+    public makeRNDISSet(): Buffer {
         const rndis_set = [
-			{ msg_type: 5 },
-			{ msg_len: 28 },
-			{ request_id: 23 },
-			{ oid: 0x1010e },
-			{ len: 4 },
-			{ offset: 20 },
-			{ reserved: 0 },
-		];
+            { msg_type: 5 },
+            { msg_len: 28 },
+            { request_id: 23 },
+            { oid: 0x1010e },
+            { len: 4 },
+            { offset: 20 },
+            { reserved: 0 },
+        ];
 
-		const oid_ = [{ oid_param: 0x1 | 0x8 | 0x4 | 0x20 }];
+        const oid_ = [{ oid_param: 0x1 | 0x8 | 0x4 | 0x20 }];
 
-		const set_buf = fixBuff(rndis_set_hdr.encode(rndis_set));
-		const oid_p = fixBuff(oid.encode(oid_));
-		const data = Buffer.concat([set_buf, oid_p], 32);
-		return toggle(data, 32); // convert byte order to little endian
+        const set_buf = fixBuff(rndis_set_hdr.encode(rndis_set));
+        const oid_p = fixBuff(oid.encode(oid_));
+        const data = Buffer.concat([set_buf, oid_p], 32);
+        return toggle(data, 32); // convert byte order to little endian
     }
 
 }
